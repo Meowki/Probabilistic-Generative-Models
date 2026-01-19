@@ -200,6 +200,35 @@ Note from eq.~\eqref{eq:complete-data-loglikehood-GM} that the objective is line
     See the applications of EM to mixtures of Bernoulli and Bayesian linear regression in [Bishop].
 \end{exercise}
 
+\begin{example}
+    Let us consider an implementation of the GMM training pipeline as described. Assuming $\R^2$ as the sample space, $K=3$ clusters, $N=400$ samples, Fig.~\ref{fig:GMM_init} shows two choices for the initial condition. Then, after running the iterative training procedure, Fig.~\ref{fig:GMM_final} shows the learnt clusters alongside the true values. Lastly, Fig.~\ref{fig:GMM_vs} shows the evolution of the likelihood per iteration. Note that both initialisations arrived at the same model, but the \emph{good} initialisation was more efficient. The demo is available in the repository. 
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.48\textwidth]{img/week2_GMM_good_init.pdf}
+        \hfill
+        \includegraphics[width=0.48\textwidth]{img/week2_GMM_bad_init.pdf}
+        \caption{Two initialisations for the GMM model}
+        \label{fig:GMM_init}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.48\textwidth]{img/week2_GMM_good_final.pdf}
+        \hfill
+        \includegraphics[width=0.48\textwidth]{img/week2_GMM_bad_final.pdf}
+        \caption{Solutions corresponding to the initialisations in Fig.~\ref{fig:GMM_init}.}
+        \label{fig:GMM_final}
+    \end{figure}
+
+        \begin{figure}
+        \centering
+        \includegraphics[width=0.55\textwidth]{img/week2_GMM_good_vs_bad.pdf}
+        \caption{Evolution of the log-likelihoodfor both initialisations in Fig.~\ref{fig:GMM_init}.}
+        \label{fig:GMM_vs}
+    \end{figure}
+\end{example}
+
 \section{EM in its general form}
 
 Recall: 
