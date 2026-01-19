@@ -14,7 +14,7 @@ To solve this optimisation problem, we can define a set of binary variables $\{r
     r_{nk}=1 \iff x_n\text{ is assigned to } \mu_k. 
 \end{equation}
 
-Then, using the Euclidean distance as similarity criterion, the objective can be
+Then, using the Euclidean distance as similarity criterion, the objective can be written as 
 \begin{equation}
     J = \sum_{n=1}^{N}\sum_{k=1}^{K} r_{nk} ||x_n-\mu_k||^2.\label{eq:J_k-means}
 \end{equation}
@@ -75,7 +75,7 @@ Thus, showing that the formulations are equivalent.
 
 In this formulation, let us define the \emph{responsibilities} of the $k$-th component to explain the observation $x$ given by
 \begin{align}
-    \gamma(z_k) \defeq p(z_h = 1|x) 
+    \gamma(z_k) \defeq p(z_k = 1|x) 
     &= \frac{p(x|z_k=1)p(z_k=1)}{\sum_{j=1}^{K}p(x|z_j=1)p(z_j=1)}\\
     &= \frac{\pi_k \cN(x; \mu_k,\Sigma_k)}{\sum_{j=1}^{K} \pi_j \cN(x; \mu_j,\Sigma_j)}.
 \end{align}
@@ -87,7 +87,7 @@ In this formulation, let us define the \emph{responsibilities} of the $k$-th com
 
 \section{Expectation Maximisation for GMMs}
 
-We will introduce a learning approach for PGMs that feature a latent variable called Expectation Maximisation (EM). We will first present it in the particular case of the GMM model, and then in the general case. 
+We will introduce a learning approach for PGMs that features a latent variable called Expectation Maximisation (EM). We will first present it in the particular case of the GMM model, and then in the general case. 
 
 The first order optimality conditions for the log-likelihood in eq.~\eqref{eq:likelihood_GMM} give
 \begin{align}
@@ -116,13 +116,13 @@ Eqs.~\eqref{eq:GMM_LL_soln1}-\eqref{eq:GMM_LL_soln3} do not provide a direct clo
 
 Let us now leave the GMM aside. In more general, perhaps abstract, terms, the goal of the  EM algorithm is to find maximum likelihood solutions for latent variable models (LVMs) by breaking down the the optimisation problem into a functional approximation of the likelihood, and then the (simpler) optimisation of such approximation. 
 
-Recall our notation involving a an observed variable $x$ and a latent variable $z$. In general LVMs, the log-likelihood can be expressed as 
+Recall our notation involving an observed variable $x$ and a latent variable $z$. In general LVMs, the log-likelihood can be expressed as 
 \begin{equation}
     \log p(x|\theta) = \int_\cX p(x|\theta,z)p(z|\theta)\dtheta. \label{eq:LVM_LL}
 \end{equation}
 \textbf{NB:} We treat both the discrete and continuous equivalently.
 
-In general, direct optimisation of eq.\eqref{eq:LVM_LL} is difficult. In fact, even calculating the above expression is only possible in limited cases, since mixtures do not mix well with the logarithm. In fact, even for likelihood in the exponential family, the mixture is not longer exponential and thus the application of the logarithm does not remove the exponential as in the single-Gaussian case.  
+In general, direct optimisation of eq.~\eqref{eq:LVM_LL} is difficult. Even calculating the above expression is only possible in limited cases, since mixtures do not mix well with the logarithm. In fact, even for likelihood in the exponential family, the mixture is not longer exponential and thus the application of the logarithm does not remove the exponential as in the single-Gaussian case.  
 
 Let us then consider the hypothetical scenario where we have access to the values of $z$ alongside the observed $x$. 
 
@@ -130,7 +130,7 @@ Let us then consider the hypothetical scenario where we have access to the value
     We will refer to $\{\x,\z\}$ as the complete dataset, while $\x$ will be the \emph{observed} or \emph{incomplete} dataset. 
 \end{definition}
 
-The likelihood related to the complete dataset is 
+The related likelihood  to the complete dataset is 
 \begin{align}
     \log p(\x,\z|\theta) 
     &= \log \prod_{n=1}^{N} p(x_n,z_n|\theta)\\
@@ -197,7 +197,7 @@ Note from eq.~\eqref{eq:complete-data-loglikehood-GM} that the objective is line
 \end{exercise}
 
 \begin{exercise}
-    See the applications of EM to mixtures of Bernoulli and Bayesian linear regression in [Bishop].
+    See the applications of EM to mixtures of Bernoulli and Bayesian linear regression in \cite{bishop2006prml}.
 \end{exercise}
 
 \begin{example}
