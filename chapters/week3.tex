@@ -1,0 +1,331 @@
+
+\chapter{Approximate Inference}
+
+\textbf{NB:} This is based on \cite{andrieu2003introduction}, \cite{blei2017variational}, and Chapter 10 of \cite{bishop2006prml}.
+
+\section{Motivation: intractable posteriors}
+
+\paragraph{Bayesian inference in generative models.} A probabilistic generative model specifies a joint distribution over observed variables
+\(x \in \mathcal X\) and latent variables \(z \in \mathcal Z\):
+\[
+p_\theta(x,z) = p_\theta(z)\,p_\theta(x \mid z),
+\]
+where \(\theta\) denotes model parameters.
+
+Given observations \(x\), Bayesian inference aims to compute the posterior distribution
+\[
+p_\theta(z \mid x) = \frac{p_\theta(x,z)}{p_\theta(x)},
+\qquad
+p_\theta(x) = \int p_\theta(x,z)\,dz.
+\]
+
+The posterior encodes all uncertainty about the latent structure \(z\) after observing the data,
+and is the central object of interest in Bayesian modeling.
+
+\begin{remark}
+    From now on, we will drop the explicit dependency of the parameter. From a Bayesian standpoint, we will consider that the latent variable $z$ encapsulates all (random) unknowns. This includes global variables such as parameters, and local variables such as cluster assignments. 
+\end{remark}
+
+\missing{Example: hierarchical Gaussian mixture}
+\missing{Example: Bayesian linear regression}
+\missing{Example: State space models}
+
+
+Approximate inference replaces the true posterior $p(z|x)$ with an approximation, say $q(z | x$) that is as close a possible to the true posterior, while at the same time allows for computing expectations and scalable computation. In this sense, there are two dominant paradigms for computing $q$. 
+
+\begin{itemize}
+    \item Monte Carlo methods, which approximate the posterior via samples $z^{(s)} \sim p(z\mid x)$. This estimate is asymptotically exact but often computationally expensive.
+    \item Variational methods, which provides a functional approximation of the posterior by solving an optimization problem:
+    \[
+q^\star(z)
+=
+\arg\min_{q \in \mathcal Q}
+\mathrm{KL}\big(q(z)\,\|\,p(z\mid x)\big),
+\]
+where \(\mathcal Q\) is a tractable family of distributions. Variational approximations are fast and scalable, but introduce bias.
+\end{itemize}
+
+
+\section{Markov chain Monte Carlo}
+
+Recall that Bayesian inference reduces to computing expectations of the form
+\[
+\mathbb E_{p(z\mid x)}[f(z)] = \int f(z)\,p(z\mid x)\,dz.
+\]
+
+When direct evaluation of this integral is infeasible, Monte Carlo methods approximate it using random samples:
+\[
+\mathbb E_{p(z\mid x)}[f(z)]
+\;\approx\;
+\frac{1}{S}\sum_{s=1}^S f(z^{(s)}),
+\qquad
+z^{(s)} \sim p(z\mid x).
+\]
+
+The law of large numbers guarantees that this estimator converges almost surely as \(S \to \infty\). Furthermore, the root-mean-square error of this estimator decreases at a rate $1/\sqrt{S}$
+
+However, the challenge in Bayesian inference is to obtains the samples $\{z^{(s)}\}_s$. Recall that the posterior takes the form
+\[
+p(z\mid x) = \frac{p(x,z)}{p(x)},
+\]
+
+Although the joint density \(p(x,z)\) is often available, the normalizing constant  
+\[
+p(x) = \int p(x,z)\,dz = \int p(x \mid z)p(z)\,dz.
+\]
+has an integral form that is rarely tractable and expensive to compute numerically in high dimensions. typically intractable. As a consequence, direct sampling from \(p(z\mid x)\) is not possible.
+
+The rational behind Markov Chain Monte Carlo (MCMC) methods is to construct a Markov chain whose limiting stationary distribution is the desired posterior.
+
+Recall that a Markov chain \(\{z^{(t)}\}_{t \ge 0}\) is defined by a transition kernel $T(z' \mid z)$,
+where
+\[
+\mathbb P(z^{(t+1)} = z' \mid z^{(t)} = z) = T(z' \mid z).
+\]
+
+For this Markov chain to have the posterior $p(z \mid x)$ as its limiting distribution, two conditions need to hold. First, the posterior has to be the chain's stationary distribution, that is, 
+\[
+\int p(z\mid x)\,T(z' \mid z)\,dz = p(z'\mid x).
+\]
+This means that if the chain starts at $z \sim p(z \mid x)$, then after one step the chain remains in the same distribution. 
+
+Second, the chain should converge to its stationary distribution. 
+
+\missing{A necessary condition for this is detailed balance. Also refer to irreducibility and aperiodicity}
+
+\paragraph{Metropolis Hastings.} A direct construction of the transition kernel that fulfills the convergence conditions above can be achieved in two steps. First, by sampling from an arbitrary proposal distribution \(q(z' \mid z)\), and then correcting the sample for the discrepancy between \(q\) and the target distribution $p(z \mid x)$.
+
+Given the current state \(z\), the Metropolis--Hastings update proceeds as follows:
+\begin{enumerate}
+  \item Propose a new state
+  \[
+  z' \sim q(z' \mid z).
+  \]
+  \item Accept the proposal with probability
+  \begin{equation}
+      \alpha(z,z')
+  =
+  \min\!\left(
+  1,\;
+  \frac{p(z'\mid x)\,q(z \mid z')}
+       {p(z\mid x)\,q(z' \mid z)}
+  \right).
+    \label{eq:MH_acceptance}    
+  \end{equation}
+
+  Meaning that the new sample is
+  \[
+  z^{(t+1)} =
+  \begin{cases}
+    z', & \text{with probability } \alpha(z,z'),\\
+    z,  & \text{otherwise.}
+  \end{cases}
+  \]
+\end{enumerate}
+
+
+\begin{remark}
+    MH does not require knowledge of the normalising constant \(p(x)\). As a consequence, since \(p(z\mid x) \propto p(x,z)\), the acceptance probability can be computed using the joint density \(p(x,z)\).
+\end{remark}
+
+
+
+\begin{remark}
+    The Metropolis--Hastings transition kernel satisfies the detailed balance condition:
+    \[
+    p(z\mid x)\,T(z' \mid z)
+    =
+    p(z'\mid x)\,T(z \mid z').
+    \]
+    This implies that \(p(z\mid x)\) is a stationary limiting distribution of the chain.
+\end{remark}
+
+
+\begin{remark}
+    A particular instance of the MH algorithm can be identified by choosing a symmetric proposal, that is $q(z \mid z') = q(z' \mid z)$. In this case, the acceptance probability reduces to 
+      \[
+    \alpha(z,z')
+    =
+    \min\!\left(
+    1,\;
+    \frac{p(z'\mid x)}
+        {p(z\mid x)}
+    \right).
+    \]
+    This is know as the Metropolis method. 
+\end{remark}
+
+A common choice for the proposal in practice is simply a random walk
+\[
+q(z' \mid z) = \mathcal N(z, \sigma^2 I).
+\]
+However, while simple to implement,this random-walk MH can mix poorly in high-dimensional or highly correlated posteriors.
+
+
+\missing{A numerical example, e.g., using a Gaussian proposal to sample from a Gaussian mixture}
+
+
+
+\paragraph{Gibbs sampling.} 
+
+To develop a MH method that exploits conditional structure in the posterior distribution, the proposal over each coordinate of $z$ can be coupled to previously sampled coordinates. To this end, denote
+\[
+z = (z_1, \dots, z_d),
+\]
+and update each component by sampling from its conditional distribution:
+\[
+z_i \sim p(z_i \mid z_{-i}, x),
+\]
+where \(z_{-i}\) denotes all components except \(z_i\).
+
+A complete Gibbs update consists of sequentially sampling:
+\[
+z_1 \sim p(z_1 \mid z_2, \dots, z_d, x),
+\]
+\[
+z_2 \sim p(z_2 \mid z_1, z_3, \dots, z_d, x),
+\]
+\[
+\vdots
+\]
+\[
+z_d \sim p(z_d \mid z_1, \dots, z_{d-1}, x).
+\]
+
+To see that Gibbs is a particular instance of MH, let us first denote the target posterior by  \(\pi(z) = p(z \mid x)\), and consider a fixed index \(i \in \{1,\dots,d\}\). To update the \(i\)-th coordinate while keeping \(z_{-i}\) fixed, Gibbs samples directly from the conditional posterior
+\[
+z_i' \sim \pi(z_i \mid z_{-i}),
+\]
+and defines the proposed sample
+\[
+z' = (z_i', z_{-i}).
+\]
+For the complete variable $z$, this  corresponds to a proposal distribution
+\begin{align}
+    q(z' \mid z)
+    &= q(z'_i, z'_{-i} \mid z_i,z_{-i})\nonumber\\
+     &= q(z'_i \mid z_i,z_{-i}, z'_{-i})q(z'_{-i} \mid z_i,z_{-i})\nonumber\\
+     &= q(z'_i \mid z_{-i})q(z'_{-i} \mid z_{-i})\nonumber\\
+    &= \pi(z_i' \mid z_{-i})\,\mathbf 1\{z'_{-i} = z_{-i}\}. \label{eq:Gibbs_proposal}
+\end{align}
+
+To compute the acceptance probability in eq.~\eqref{eq:MH_acceptance}, we can factorise
+
+Using the factorization
+\[
+\pi(z) = \pi(z_{-i})\,\pi(z_i \mid z_{-i}),
+\qquad
+\pi(z') = \pi(z_{-i})\,\pi(z_i' \mid z_{-i}),
+\]
+together with the proposal in eq.~\eqref{eq:Gibbs_proposal} (recall that $z'_{-i} = z_{-i}$)
+\[
+q(z' \mid z) = \pi(z_i' \mid z_{-i}),
+\qquad
+q(z \mid z') = \pi(z_i \mid z_{-i}),
+\]
+we obtain
+\[
+\frac{\pi(z')\,q(z \mid z')}
+     {\pi(z)\,q(z' \mid z)}
+=
+\frac{
+\pi(z_{-i})\,\pi(z_i' \mid z_{-i})\,\pi(z_i \mid z_{-i})
+}{
+\pi(z_{-i})\,\pi(z_i \mid z_{-i})\,\pi(z_i' \mid z_{-i})
+}
+= 1.
+\]
+
+Therefore, the acceptance probability is
+\[
+\alpha(z,z') = 1,
+\]
+meaning that the proposed move is always accepted.
+
+
+\begin{remark}
+    Gibbs sampling is a special case of the Metropolis--Hastings algorithm in which the proposal distribution is the exact full conditional distribution, and the acceptance probability is identically equal to one. Furthermore, each update (not necessarily the full update) leaves the joint posterior invariant.
+\end{remark}
+
+
+\paragraph{Practical considerations.} There are a number of implementation practices to be taken into account when suing MCMC. 
+
+\textbf{Burn-in period:} Though MH is guaranteed to converge to its stationary distribution, the fact that the chain starts from an arbitrary distribution implies that the initial samples will not be representative of the target posterior. Therefore, the initial sampels should be discarded as invalid samples from $p(z \mid x)$. When the samples are representative from the target, we say that the chain has \emph{mixed}. Furthermore, assessment of this convergence must be assessed empirically.  
+
+\textbf{Autocorrelation:} The samples used for Monte Carlo integration should be i.i.d.~samples from the target (posterior) distributions; in fact, when correlated samples are used it is the \emph{effective sample size} that governs the quality of the approximation. Since the samples are generated by a chain with a correlated transition kernel, consecutive samples are not independent (in general correlated) by construction. To alleviate this, after sampling from the chain we should \emph{thin} the chain, that is, to consider a subet of samples, for instance, one every 50 samples.
+
+\missing{Example: Gibbs vs MH in a correlated distribution}
+
+
+\section{Variational inference}
+
+\paragraph{The evidence lower bound (ELBO).} Rather than trying to compute the posterior $p(z \mid x)$ directly, we will specify a family of densities over $z$ termed $\cQ$, where each $q(\cdot)\in\cQ$ is a candidate approximation to the posterior. Our goal will ve then to find the best candidate within $\cQ$. Our optimality criterion will be the will be the minimisation of the KL divergence, that is, we will find
+\begin{equation}
+    q^*(z) = \argmin_{q\in\cQ} \KL{q(z)}{p(z \mid x)}.
+    \label{eq:VI_problem}
+\end{equation}
+
+\begin{remark}
+    The more general or comprehensive the family $\cQ$, the more difficult it is to find the optimal $q^*(z)$.
+\end{remark}
+
+Observe that solving eq.~\eqref{eq:VI_problem} is unfeasible, since it requires $p(z\mid x)$ or equivalently $p(x)$. However, notice that since
+\[
+\KL{q(z)}{p(z \mid x)}
+=
+\int q(z)\log q(z) \dz 
+-
+\int q(z)\log p(z,x) \dz 
++
+\underbrace{\int q(z)\log p(x) \dz}_{\log p(x)} 
+\]
+the dependence of the objective on $\log p(x)$ is via a constant which can be ignored when optimising wrt $q(z)$. Therefore, the optimisation problem in eq.~\eqref{eq:VI_problem} is equivalent to maximising the evidence lower bound (ELBO) given by
+\begin{equation}
+    \elbo \defeq \int q(z)\log p(z,x) \dz  - \int q(z)\log q(z) \dz.
+    \label{eq:elbo_def1}
+\end{equation}
+
+Let us observe the following decomposition of the ELBO:
+\begin{align}
+    \elbo 
+    &= \int q(z)\log p(z,x) \dz  - \int q(z)\log q(z) \dz\nonumber\\
+    &= \int q(z)\log p(x \mid z) \dz + \int q(z)\log p(z) \dz  - \int q(z)\log q(z) \dz\nonumber\\
+    &= \E{\log p(x \mid z)} - \KL{q(z)}{p(z)},
+    \label{eq:elbo_def2}
+\end{align}
+where all the expectations in this section will be wrt $q(z)$. 
+
+Maximising the ELBO in eq.~\eqref{eq:elbo_def2} is a balance between two terms. The first one seeks to assign the mass of $q$ to the values of $z$ that explain the observations $x$, while the second one ensures that $q(z)$ is close to the prior $p(z)$. 
+
+\begin{remark}
+    Maximising the ELBO recovers the usual likelihood / prior trade off. 
+\end{remark}
+
+To justify the name of this objective, let us see how it relates to the so called \emph{evidence} $\log p(x)$. Using the expression in eq.~\eqref{eq:elbo_def1}, we have
+\begin{align}
+    \log p(x) - \elbo
+    &= 
+    \int q(z) \log p(x) \dz - \int q(z)\log p(z,x) \dz  + \int q(z)\log q(z) \dz\nonumber\\
+    &= 
+    \int q(z) \log \frac{1}{p(z \mid x)} \dz  + \int q(z)\log q(z) \dz\nonumber\\
+    &= \KL{q(z}{p(z \mid x)} \label{eq:elbo_gap}
+\end{align}
+Since we know that the Kl divergence is always nonegative, then the ELBO is, as its name suggests, a lower bound of the evidence $\log p(x)$. That is, 
+\[
+\log p(x) \geq \elbo.
+\]
+Furthermore, the gap between these quantities is precisely the discrepancy, in terms of the KL, between the approximate posterior $q(z)$ and the true posterior. 
+
+\begin{remark}
+    When the latent variable is a parameter, the ELBO can be informally used for model selection, by finding the maximum a posteriori. However, when this is done in practice, it is unknown how far this solution is from the true one. 
+    \missing{include an illustration of the biased maxima}
+\end{remark}
+
+\begin{remark}
+    Observe from eq.~\eqref{eq:elbo_def1} that the first term in the ELBO is the objective of EM, this is because in EM we have that $\elbo = \log p(x)$, since $q(z) = p(z \mid x)$---see eq.~\eqref{eq:elbo_gap}. This is possible because EM is used in cases where $p(z \mid x)$ can be computed. In VI, however, we do not assume this, but rather we only consider a sufficiently good approximation $q$ within the variational family $\cQ$. Therefore, VI can be seen as an extension of EM, used in cases where the parameters are treated as random variables, but their posterior is intractable. 
+\end{remark}
+
+\paragraph{The mean field variational family.} In practice, we need to choose an explicit family $\cQ$. This is done considering the trade-off between the expressivity of the family and the feasibility of solving the problem in eq.~\eqref{eq:VI_problem}. We will consider the mean field (MF) family, where the distribution over the latent variable $z = (z_1,z_2,\ldots,z_m)\in\R^m$ factorises as
+\begin{equation}
+    q(z) = \prod_{i=1}^mq_i(z_i).
+\end{equation}
