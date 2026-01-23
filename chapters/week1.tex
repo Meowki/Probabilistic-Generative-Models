@@ -6,7 +6,7 @@
 
 A Probabilistic generative model (PGM), or simply, a GM, is a methodology for generating data. In general, the PGM is constructed and adjusted using observations with the aim to synthesise samples with the same statistical properties of the available observations. The \emph{probabilistic} nature of the PGMs studied in this course follows from the fact that the available data will be considered to be realisations of an underlying random variable (RV), e.g., $X$. 
 
-In this sense, the probability distribution of $X$, denoted $P_X(x)$, as well as its probability density function (pdf) $p_X(x)$ will be central to the study of PGMs. In particular, targetting the pdf is one way of constructing PGMs, in which case the whole PGM paradigm becomes equivalent to the classical statistical modelling approach. However, as we will see in the course, enforcing the sought-after PGM to have an explicit parametric pdf can be rather restrictive. 
+In this sense, the probability distribution of $X$, denoted $P_X(x)$, as well as its probability density function (pdf) $p_X(x)$ will be central to the study of PGMs. In particular, targeting the pdf is one way of constructing PGMs, in which case the whole PGM paradigm becomes equivalent to the classical statistical modelling approach. However, as we will see in the course, enforcing the sought-after PGM to have an explicit parametric pdf can be rather restrictive. 
 
 Throughout the course, we will consider a probability space $(\Omega, \cF, \P)$, with 3 RVs given by the following measurable maps: 
 \[
@@ -444,8 +444,8 @@ In the continuous case, we are interested in understanding what type of converge
 
 	Note that here, we have
 	\begin{align}
-		\DL{p}{q_n} &= \int_0^{1/n} |e^{-n}-1|\dx + \int_{1/n}^1 |c_n -1|\dx = \frac{|e^{-n}-1|}{n} + \frac{n|c_n-1|}{n-1}\\
-		\KL{p}{q_n} &=  \int_0^{1/n} -\log e^{-n} \dx + \int_{1/n}^1 -\log c_n \dx =  1 + \frac{-n}{n-1}\log c_n.
+		\DL{p}{q_n} &= \int_0^{1/n} |e^{-n}-1|\dx + \int_{1/n}^1 |c_n -1|\dx = \frac{|e^{-n}-1|}{n} + \frac{(n-1)|c_n-1|}{n}\\
+		\KL{p}{q_n} &=  \int_0^{1/n} -\log e^{-n} \dx + \int_{1/n}^1 -\log c_n \dx =  1 + \frac{-(n-1)}{n}\log c_n.
 	\end{align}
 	Now take $n\to\infty$. From eq.~\eqref{eq:cn_KL_example} we can see that $c_n$ converges to 1. Therefore, $\DL{p}{q}\to 0$. However, note that $\KL{p}{q} \to 1$.  
 \end{example}
@@ -460,7 +460,7 @@ In the continuous case, we are interested in understanding what type of converge
 \end{example}
 
 \begin{remark}
-	The objective of these examples is to show that under different divergences, one can have different criteria of convergence. In the first case, $q_n$ converges to $p$ under $L_1$, but not under KL. In the second case, $p_\epsilon$ converges to $q_\epsilon$ under KL but not under $\xi^2$. This give a sense of \emph{hierarchy} across divergences, where some are sais to induce stronger topologies than others. The stronger the topology, the more demanding the conditions for convergence (or fewer sequences are admitted to converge). In general, we consider KL as one of the stronger divergences (but there are some that are even stronger as we just saw).
+	The objective of these examples is to show that under different divergences, one can have different criteria of convergence. In the first case, $q_n$ converges to $p$ under $L_1$, but not under KL. In the second case, $p_\epsilon$ converges to $q_\epsilon$ under KL but not under $\xi^2$. This give a sense of \emph{hierarchy} across divergences, where some are said to induce stronger topologies than others. The stronger the topology, the more demanding the conditions for convergence (or fewer sequences are admitted to converge). In general, we consider KL as one of the stronger divergences (but there are some that are even stronger as we just saw).
 \end{remark}
 
 \paragraph{Direct versus reverse KL.} Since $\KL{p}{q}$ is not symmetric, we are interested in studying the \emph{reverse} divergence $\KL{q}{p}$ and understanding how it relates its \emph{direct} counterpart.  
@@ -469,10 +469,10 @@ Since $P\ll Q$ is needed for $\KL{p}{q}$, it is required that $P\gg Q$ for $\KL{
 
 Let us see a numerical example. 
 
-\begin{example}[Assymetry of the KL between two Gaussians]
+\begin{example}[Asymmetry of the KL between two Gaussians]
 	The KL divergence between two Gaussians is
 	\begin{equation}
-		\KL{\cN(\mu_0,\sigma_0)}{\cN(\mu_1,\sigma_1)} = \log\frac{\sigma_1}{\sigma_0} + \frac{\sigma_0^2 + (\mu_0-\mu_1)^2}{2\sigma_1^2} - \frac{1}{2}. \label{eq:2Gaussians}
+		\KL{\cN(\mu_0,\sigma_0^2)}{\cN(\mu_1,\sigma_1^2)} = \log\frac{\sigma_1}{\sigma_0} + \frac{\sigma_0^2 + (\mu_0-\mu_1)^2}{2\sigma_1^2} - \frac{1}{2}. \label{eq:2Gaussians}
 	\end{equation}
 	Let us consider $p=\cN(0,1)$ and $q=\cN(0,v^2)$, and evaluate 
 	\begin{itemize}
@@ -527,7 +527,7 @@ where the last approximation is due to Monte Carlo. This reveals that maximum li
 
 \section{Concluding remarks}
 
-As we will throughout the module, when designing/chossing a PGM, we will be faced with the following scenarios. 
+As we will throughout the module, when designing/choosing a PGM, we will be faced with the following scenarios. 
 
 \begin{itemize}
 	\item \textbf{Explicit-likelihood models:} These include classical statistical models such as Gaussians, exponentials, Bernoulli, $Xi^2$, log-normal, but also combinations or transformations that we construct as long as they have an explicit likelihood. These are Gaussian mixtures, piece-wise defined distributions, and amy pushforward model constructed through an invertible transformation so that its density can be calculated via the change of variable theorem. These last models are referred to as normalising flows, as they assume a Gaussian source measure. 
