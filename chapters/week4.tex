@@ -1,0 +1,285 @@
+\chapter{Bayesian Nonparametrics}
+
+\textbf{NB:} This is based on \cite[Ch.~1-2]{Orbanz2014BayesianNP}.
+
+Recall that given a collection of of observations $x_1,\ldots,x_n$, the main objective of the learning problem is to identify the data-generating mechanism. In classical statistics, this is achieved by defining the set of possible mechanisms as follows.  
+\begin{definition}[Statistical model]
+Let $(\cX, \cA)$ be a measurable sample space.  
+A statistical model is a family of probability measures
+\[
+\cP = \{ P_\theta : \theta \in \Theta \}
+\]
+defined on $(\cX, \cA)$, where $\Theta$ is a parameter space and $\theta$ is an unknown parameter indexing the data-generating distribution.
+\end{definition}
+
+Then, the observations $x_1,\ldots,x_n$ are regarded as a realisation of a random variable with a distribution in the statistical model. This way, learning reduces to the inverse problem related to identifying the distribution in $\cP$ that generated the observations. The canonical procedure to choose this model is maximum likelihood. 
+
+
+\begin{example}[Density estimation: Gaussian parametric model vs.\ empirical measure]
+Let $x_1,\dots,x_N$ be i.i.d.\ observations taking values in $\cX=\R$.
+
+Consider the statistical model given by 
+\[
+\mathcal{P}_{\mathrm{Gauss}}
+= \bigl\{ P_{\mu,\sigma^2} : (\mu,\sigma^2)\in \mathbb{R}\times(0,\infty)\bigr\},
+\qquad
+p(x\mid \mu,\sigma^2)=\frac{1}{\sqrt{2\pi\sigma^2}}
+\exp\!\Bigl(-\frac{(x-\mu)^2}{2\sigma^2}\Bigr).
+\]
+The optimal (maximum likelihood) parameters for this statistical model are
+\[
+\hat\mu=\frac{1}{n}\sum_{n=1}^N x_n,
+\qquad
+\widehat{\sigma^2}=\frac{1}{N}\sum_{n=1}^n (n_i-\hat\mu)^2.
+\]
+Alternatively, we can consider an assumption-free estimator of the data-generating distribution given by the empirical measure
+\begin{equation}
+    \hat P_N \;=\; \frac{1}{N}\sum_{n=1}^N \delta_{x_n},   
+    \label{eq:empirical_measure_example}
+\end{equation}
+where $\delta_{x}$ is the Dirac measure at $x$. Fig.~\ref{fig:density_estimation_2methods} provides an illustration of both estimators. 
+
+Note that for the Gaussian statistical model, the parameter space is clearly defined: $(\mu,\sigma^2)\in \Theta = \R\times(0,\infty)$. However, it may not be clear what the parameters are in the second case. From eq.~\eqref{eq:empirical_measure_example} notice that the parameters are the locations of the diracs, which are equal to the observations. This implies that the statistical model is the space of all measures with an arbitrary number of diracs in $\R$. This implies that the number of parameters in the second case is infinite. 
+\end{example}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{img/week4_density_estimation_2methods.pdf}
+    \caption{Density estimation: Gaussian model versus empirical measure.}
+    \label{fig:density_estimation_2methods}
+\end{figure}
+
+
+ \begin{remark}
+    We will call the statistical model $\cP$ \textbf{parametric} if the parameter space is finite, and \textbf{nonparametric} is parameter space is infinite.  
+ \end{remark}
+
+\paragraph{The role of the parameter.} We can consider learning the parameter as a form of compression, where the information in the, say $N$, observations is summarised in the parameter $\theta\in\Theta$---see Fig.~\ref{fig:data_model}. The parameter representation then will then capture the relevant patterns in the data and retain them for general purposes such as performing predictions, discriminative tasks such as classification, and even storage. Critically, when the parameter space is finite (and the dimensionality is lower than the number of datapoints), this compression is \emph{lossy}, meaning that some information in the data is inevitably lost when determining the parameter, and this the complete observations cannot be fully recovered  (or explained) from the parameters alone. Additionally, if the number of parameters is fixed, an increasing amount of observations will not be able to extract information monotonically form the data, as there is only enough information that a $m$-dimensional vector can convey
+
+On the contrary, a non-parametric model (i.e., a statistical model with an  infinite-dimensional parameter space) can represent a form of lossless data representation. This means that no information is lost when training the model. In such case, the distinction between the parameter space and the model space is usually blurred, as the parameter becomes the model itself. Though this sounds like a great way to learn models as its provide infinitely flexible models that do not \emph{saturate} and keep learning as we through more data to them, their implementation in practice requires careful considerations to deal with computational complexity. 
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{img/week4_data-model.pdf}
+    \caption{Illustration of parameter learning as compression.}
+    \label{fig:data_model}
+\end{figure}
+
+\paragraph{Bayesian nonparametric models.} Since in Bayesian ML we consider the parameter to be a random variable, we need to define a (prior) distribution over the parameter space $\Theta$.  This 
+
+\begin{definition}[Bayesian statistical model]
+A Bayesian statistical model describes how data are generated and what is known about the unknown parameters before observing the data.
+
+It consists of:
+\begin{enumerate}
+  \item a \emph{likelihood} $p(x \mid \theta)$, which specifies how the data $x$ are distributed for a given parameter value $\theta$, and
+  \item a \emph{prior distribution} $\pi(\theta)$, which represents our beliefs about plausible values of $\theta$ before seeing any data.
+\end{enumerate}
+
+Together, the likelihood and the prior define a joint density
+\[
+p(x,\theta) = p(x \mid \theta)\,\pi(\theta),
+\]
+which describes both how the data are generated and how the parameters are distributed.
+\end{definition}
+
+Therefore, under the Bayesian paradigm, learning the model no longer refers to finding the best parameter in the parameter space (and, as a consequence the best model in the statistical model) as in the classical setup outlined above. Instead, we are now interested in finding the posterior distribution over the parameter 
+\begin{equation}
+    p(\theta|x_1,\ldots,x_N).
+\end{equation}
+As a consequence, the parameter remains uncertain given a finite number of observations.
+
+This week we will focus on the models that are given by a infinite-dimensional parameter space, where the main challenge will need to define priors in such spaces.  Recall that a distribution on an infinite-dimensional space, ro equivalently, a collection of random variables indexed by such space is a \emph{stochastic process} with paths in $\Theta$. In particular, we will focus on two such models: The Dirichlet process, which is a prior over probability distributions, and the Gaussian process which is a prior over functions. 
+
+\section{The Dirichlet process}
+
+\paragraph{Bayesian mixture model} We are very familiar at this stage with the hierarchical GMM, let us consider a different view of this model. Denoting the assignment variable as $z\in\N$, the distribution the observation $x$ generated by a the $k$-th cluster can be expressed as 
+\begin{equation}
+    p_k(x) = p(x \mid z=k),
+\end{equation}
+where we have not assumed that this distribution is Gaussian. Furthermore, the probability for a given observation to be generated by such cluster, can be denotes as 
+\begin{equation}
+    g_k = \Prob{Z=k},
+\end{equation}
+where $\sum_{\in\N}c_k = 1, c_k\geq0,\, \forall k\in\N$. The resulting model, given by
+\begin{equation}
+p(x) = \sum_{k\in\N} c_k p(x \mid z=k).    
+\end{equation}
+We will refer to this distribution as a mixture model. Furthermore, when there is only a finite number of probabilities $c_k$, we will say that this is a finite mixture. 
+
+The set of all sequences of the the form $\{c_k\}_{k\in\N}$ is called \emph{simplex}, denoted by 
+\begin{equation}
+    \Delta \defeq \left\{ \{c_k\}_{k\in\N} \middle| \sum_{k\in\N}c_k = 1, c_k\geq0 \right\}.
+\end{equation}
+We can also assume that the cluster densities are in a parametric model over $\cX$, given by $\{p(\cdot \mid \phi) | \phi\in\Phi\}$. This way, the assignment variable informs the chosen parameters for the conditional probabilites. This yields the following expression for the generative model
+\begin{equation}
+    p(x) = \sum_{k\in\N} c_k p(x \mid \phi).    
+\end{equation}
+This allows us to express the following interpretation: Consider a discrete (atomic) probability measure $\theta$ on the parameter space $\Phi$, given by:
+\begin{equation}
+    \theta(\cdot) = \sum_{k\in\N} c_k \delta_{\phi_k}(\cdot). 
+\end{equation}
+This measure assigns probability to atoms in the parameter space and is referred to as the mixing measure---see Fig.~\ref{fig:mixing_model}. This is because we can express the PGM as
+\begin{align}
+    p(x) 
+    &= \int_\Phi p(x \mid \phi) \theta(\phi)\d\phi\\
+    &= \int_\Phi p(x \mid \phi) \sum_{k\in\N} c_k \delta_{\phi_k}(\phi)\d\phi\\
+    &= \sum_{k\in\N}  c_k  p(x \mid \phi_k).
+\end{align}
+
+\begin{remark}
+    The statistical model used in clustering can be written as the mixture model above. This implies that the parameter of such model is a discrete probability distribution (called the mixing distribution). 
+\end{remark}
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{img/week4_mixing_measure.pdf}
+    \caption{Illustration of a mixing measure (left) and the mixing model (right).}
+    \label{fig:mixing_model}
+\end{figure}
+
+
+
+Having identified the parameter space of the mixture model, let us now consider a Bayesian mixture model, that is, a random mixing measure 
+\begin{equation}
+    \Theta = \sum_{k\in\N} C_k \delta_{\Phi_k}.
+\end{equation}
+Therefore, the prior of a Bayesian mixture is the distribution of the random mixing law $\Theta$. Constructing this prior is not difficult. First, we can to define a prior for the parameters of the components, that is, 
+\begin{equation}
+    \Phi_1,\Phi_2,\ldots, \sim_\text{i.i.d.} G,
+\end{equation}
+and independent of $C_k$. Then to sample the weights we cannot consider indepenence, that is the collection elements of the sequence $\{c_k\}_{k\in\N}$ needs to add up to one. However, in the finite case, we can simply sample $K$ i.i.d.~elements $V_k$ form [0,1], and then define
+\begin{equation}
+    C_k \defeq \frac{V_x}{V_1+\ldots+V_K}.    
+\end{equation}
+
+\begin{remark}
+    When the RVs $V_k$ follow a gamma distribution, $C_k$ follow a Dirichlet distribution. 
+\end{remark}
+
+\paragraph{Stick-breaking construction.} The above construction works well for finite $k$ but very often we will want to define the mixture over infinite components (Why?). For an infinite number of components, the sum of i.i.d.~variables $V_1 + V_2 + \ldots$ will diverge almost surely. 
+
+Sampling an infinite number of parameters $\Phi_k\sim G$ is not problematic. For the mixing weights $C_k$, we can consider the stick-breaking construction, which provides a simple way to generate an infinite sequence of non-negative weights that sum to one.
+
+Imagine a stick of length 1 representing total probability mass. The idea is to break this stick an infinite number of times, where the remaining pieces of the stick will be the $c_k$.
+
+At step $k$, we:
+\begin{enumerate}
+  \item break off a fraction $V_k \in (0,1)$ of the remaining stick,
+  \item assign this piece length $C_k$ to component $k$,
+  \item keep the rest for future components.
+\end{enumerate}
+
+Formally, let $|I_1| = 1$. For $k = 1,2,\ldots$:
+\[
+V_k \sim H, \qquad
+C_k = |I_k|\,V_k, \qquad
+|I_{k+1}| = (1 - V_k)\,|I_k|.
+\]
+
+The weights $(C_k)_{k\ge1}$ are non-negative and satisfy
+\[
+\sum_{k=1}^\infty C_k = 1 \quad \text{almost surely}.
+\]
+
+This construction allows us to define mixture models with infinitely many components, while ensuring that the total probability mass remains finite and well defined.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/week4_stick_breaking.pdf}
+    \caption{Illustration of a the stick breaking process.}
+    \label{fig:stick_breaking}
+\end{figure}
+
+The strick-breaking procedure allows for constructing a mixing measure with infinite components by choosing a specific distribution for the components's parameters $G$. Choosing $H$ above as a beta distribution we have: 
+
+\begin{definition}[Dirichlet process]
+    Consider $\alpha>0$ a concentration parameter,  and $G$ a probability measure on $\Phi$. The random discrete probability measure $\Theta$ generated by 
+    \begin{align}
+        V_1,V_2,\ldots, &\sim_\text{i.i.d.} \text{Beta}(1,\alpha) \quad \text{and}\quad C_k \defeq V_k\prod_{j=1}^{k-1}(1-V_k)\\
+        \Phi_1,\Phi_2,\ldots, &\sim_\text{i.i.d.} G
+    \end{align}
+    is called a Dirichlet process (DP) with base measure $G$ and concentration $\alpha$.
+    
+\end{definition}
+
+Fig.~\ref{fig:2DPs} shows draws from two DPs with different concentration parameters. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/week4_2DPs.pdf}
+    \caption{Draws from two DPs with a standard Gaussian as base measure, and different concentration parameters.}
+    \label{fig:2DPs}
+\end{figure}
+
+
+
+
+
+\paragraph{Dirichlet process mixture model.}
+Using a Dirichlet process as a prior on the mixing measure yields an infinite mixture model.
+Specifically, let
+\[
+\Theta \sim \mathrm{DP}(\alpha, G), \qquad
+\phi_i \mid \Theta \sim \Theta, \qquad
+x_i \mid \phi_i \sim p(x \mid \phi_i),
+\]
+for $i=1,\ldots,N$.
+Marginally, this defines a mixture model with a countably infinite number of components, where the number of components effectively used by the data grows with $N$.
+
+\paragraph{Posterior of the Dirichlet process.}
+A key property of the Dirichlet process is conjugacy.
+If
+\[
+\Theta \sim \mathrm{DP}(\alpha, G)
+\quad\text{and}\quad
+\phi_1,\ldots,\phi_N \mid \Theta \sim \Theta,
+\]
+then the posterior distribution of $\Theta$ is again a Dirichlet process:
+\[
+\Theta \mid \phi_1,\ldots,\phi_N
+\;\sim\;
+\mathrm{DP}\!\left(
+\alpha + N,\;
+\frac{\alpha G + \sum_{n=1}^N \delta_{\phi_n}}{\alpha + N}
+\right).
+\]
+
+This result shows that Bayesian updating under the Dirichlet process corresponds to combining the prior base measure with the empirical distribution of the observed atoms.
+
+
+
+
+
+\section{The Gaussian process}
+
+
+Recall the parametric model underpinning Bayesian linear regression. Consider the model
+\[
+y = \phi(x)^\top w + \varepsilon,
+\qquad
+\varepsilon \sim \mathcal{N}(0,\sigma^2),
+\]
+where $\phi(x)\in\R^m$ is a fixed feature map and $w\in\R^m$ is a vector of unknown weights. Furthermore, let us consider a standard Gaussian prior on the weights,
+\[
+w \sim \mathcal{N}(0,I).
+\]
+
+For any finite set of inputs $x_1,\ldots,x_n$, the vector of latent function values
+\[
+f = (f(x_1),\ldots,f(x_n)), \qquad f(x)=\phi(x)^\top w,
+\]
+is jointly Gaussian:
+\[
+f \sim \mathcal{N}(0, \Phi \Phi^\top),
+\]
+where $\Phi = [\phi(x_1),\ldots,\phi(x_n)]^\top$.
+Thus, Bayesian linear regression induces a Gaussian distribution over function values.
+
+\begin{itemize}
+    \item Explore the rank of this covariance
+    \item what happens if $m$ grows?
+    \item cane we take $m\to\infty$?
+\end{itemize}
