@@ -30,9 +30,9 @@ p(x\mid \mu,\sigma^2)=\frac{1}{\sqrt{2\pi\sigma^2}}
 \]
 The optimal (maximum likelihood) parameters for this statistical model are
 \[
-\hat\mu=\frac{1}{n}\sum_{n=1}^N x_n,
+\hat\mu=\frac{1}{N}\sum_{n=1}^N x_n,
 \qquad
-\widehat{\sigma^2}=\frac{1}{N}\sum_{n=1}^N (n_i-\hat\mu)^2.
+\widehat{\sigma^2}=\frac{1}{N}\sum_{n=1}^N (x_n-\hat\mu)^2.
 \]
 Alternatively, we can consider an assumption-free estimator of the data-generating distribution given by the empirical measure
 \begin{equation}
@@ -111,7 +111,7 @@ p(x) = \sum_{k\in\N} c_k p(x \mid z=k).
 \end{equation}
 We will refer to this distribution as a mixture model. Furthermore, when there is only a finite number of probabilities $c_k$, we will say that this is a finite mixture. 
 
-The set of all sequences of the the form $\{c_k\}_{k\in\N}$ is called \emph{simplex}, denoted by 
+The set of all sequences of the form $\{c_k\}_{k\in\N}$ is called \emph{simplex}, denoted by 
 \begin{equation}
     \Delta \defeq \left\{ \{c_k\}_{k\in\N} \middle| \sum_{k\in\N}c_k = 1, c_k\geq0 \right\}.
 \end{equation}
@@ -313,7 +313,7 @@ with $\Sigma_\w$ a positive definite matrix.
 
 This is a standard latent-variable formulation as the models we have seen earlier. In fact, the marginal law of $\y$, given by 
 \begin{equation}
-    p(y \mid \X) = \int  p(y \mid \X, \w)p(\w)\d\w,
+    p(\y \mid \X) = \int  p(\y \mid \X, \w)p(\w)\d\w,
     \label{eq:marginal_implicit}
 \end{equation}
 can be calculated analytically: eqs.~\eqref{eq:Bayesian_linear_model} and  \eqref{eq:Bayesian_linear_model_prior} into  \eqref{eq:marginal_implicit} give
@@ -535,7 +535,7 @@ Then the inner product expands as
 =
 k(x,x').
 \]
-As a consequence, implementing a GP with the kernel in eq.~\eqref{eq:poly_kernel} us equivalent to implementing a (Gaussian) Bayesian linear regression model with the feature in eq.~\eqref{eq:poly_phi}.
+As a consequence, implementing a GP with the kernel in eq.~\eqref{eq:poly_kernel} is equivalent to implementing a (Gaussian) Bayesian linear regression model with the feature in eq.~\eqref{eq:poly_phi}.
 \end{example}
 
 
@@ -582,11 +582,11 @@ Thus, the RBF kernel corresponds to a linear model in an infinite-dimensional Hi
 
 
 \begin{remark}[Kernel as a similarity measure]
-    Recall the the kernel defines the inner product between the feature maps, as a consequence, its choice will be made on the basis of assessing similarity.
+    Recall the kernel defines the inner product between the feature maps, as a consequence, its choice will be made on the basis of assessing similarity.
 \end{remark}
 
 \begin{remark}[Stationary kernels]
-    If the kernel is a function of the difference of its arguments, that is, $k(x, x')=k(x-x')$, we will say that that the kernel is stationary. It is worth noting that stationary kernels make the covariance between points invariant under translations in the input space. Since the kernel models similarity between points, in the case of stationary kernels, the closer two points are, the more similar they are.
+    If the kernel is a function of the difference of its arguments, that is, $k(x, x')=k(x-x')$, we will say that that the kernel is stationary. It is worth noting that stationary kernels make the covariance between points invariant under translations in the input space. Since the kernel models similarity between points, in the case of stationary kernels, the closer two points are, the more similar they are considered.
 \end{remark}
 
 
@@ -594,7 +594,7 @@ The usual choice for a GP kernel is the \textit{Squared Exponential} (SE) kernel
 \begin{equation}\label{eq:gp_kernel_se}
 	k_{SE}(x, x') = \sigma^2 \exp\left( - \frac{\left( x- x'\right)^2}{2\ell^2} \right).
 \end{equation}
-Under the SE kernel, the correlation between two points decays smoothly and long-range correlations are difficult to model due to the tail behaviour of the Gaussian. The parameters of the SE as the \emph{lengthscale} $l>0$, which controls de memory or correlation length of the process, and the marginal variance $\sigma^2$, which controls the amplitude (or power) of the trajectories. 
+Under the SE kernel, the correlation between two points decays smoothly and long-range correlations are difficult to model due to the tail behaviour of the Gaussian function. The parameters of the SE are the \emph{lengthscale} $\ell>0$, which controls the memory or correlation length of the process, and the marginal variance $\sigma^2$, which controls the amplitude (or power) of the trajectories. 
 
 
 
@@ -602,12 +602,12 @@ The \emph{Rational Quadratic} (RQ) kernel, given by
  \begin{equation}\label{eq:gp_kernel_rq}
 	k_{RQ}(x, x') = \sigma^2 \left(1 + \frac{\left( x- x'\right)^2}{2\alpha\ell^2 } \right)^{-\alpha},
 \end{equation}
-is obtained by adding infinite SE kernels with different \textit{lenghtscales}\footnote{
+is obtained by adding infinite SE kernels with different \textit{lengthscales}\footnote{
     Denoting $r = x-x'$, $k_{RQ}(r)
     =
     \int 
     k_{SE}(r|\tau) \tau^{\alpha-1}\exp(-\alpha\tau/\beta)\d\tau
-    $, where $\tau = l^{-2}$ and $\beta^{-1} = l^{2}$.}, where $\alpha$ controls the spread of the considered lengthscales, and $l$ is a sort of reference lengthscale.
+    $, where $\tau = \ell^{-2}$ and $\beta^{-1} = \ell^{2}$.}, where $\alpha$ controls the spread of the considered lengthscales, and $\ell$ is a sort of reference lengthscale.
     Due to its additive structure, the RQ kernel is able to model short- and long-range correlations.
 
 The \emph{Periodic} kernel, given by 
@@ -620,12 +620,7 @@ allows for modelling periodic functions, where the parameter $p$ controls the pe
 \end{equation}
 obtained by multiplying a periodic kernel by an SE kernel, which allows for local periodic behaviour.
 
-\begin{remark}
-When designing a Gaussian process and choosing a covariance function, one is not restricted to a fixed set of known kernels.
-Kernels can be combined to construct richer covariance structures that better capture the properties of the underlying process.
-In particular, the sum and the product of valid kernels are themselves valid kernels, and the exponential of a kernel,
-\(\exp(k_1(\cdot,\cdot))\) with \(k_1\) a valid kernel, also defines a valid covariance function.
-\end{remark}
+Fig.~\ref{fig:GP_samples} shows these four kernels and samples drawn from them.
 
 \begin{figure}[t]
     \centering
@@ -634,12 +629,20 @@ In particular, the sum and the product of valid kernels are themselves valid ker
     \label{fig:GP_samples}
 \end{figure}
 
+\begin{remark}
+When designing a Gaussian process and choosing a covariance function, one is not restricted to a fixed set of known kernels.
+Kernels can be combined to construct richer covariance structures that better capture the properties of the underlying process.
+In particular, the sum and the product of valid kernels are themselves valid kernels, and the exponential of a kernel,
+\(\exp(k_1(\cdot,\cdot))\) with \(k_1\) a valid kernel, also defines a valid covariance function.
+\end{remark}
 
-Fig.~\ref{fig:GP_samples} shows these four kernels and samples drawn from them.
+
+
+
 
 \paragraph{Sampling from a Gaussian process.}
 
-Since a GP is a generatie model for infinite-dimensional functions, sampling form it might seem impossible at first. However, recall that a GP defines a joint Gaussian distribution over the function values \emph{at any finite collection of input points}. See Fig.~\ref{fig:gp_graphical_model_full} for a graphical model representation.
+Since a GP is a generative model for infinite-dimensional functions, sampling from it might seem impossible at first. However, recall that a GP defines a joint Gaussian distribution over the function values \emph{at any finite collection of input points}. See Fig.~\ref{fig:gp_graphical_model_full} for a graphical model representation.
 
 
 \begin{figure}[H]
@@ -754,15 +757,14 @@ p(f_\ast \mid x_\ast,\X,\y)
 \]
 with mean and variance given by
 \begin{align}
-    m_\ast &= k_\ast^\top (K+\sigma^2 I_N)^{-1}\y,\label{eq:GP_post_pred_mv}\\
+    m_\ast &= k_\ast^\top (K+\sigma^2 I_N)^{-1}\y,\label{eq:GP_post_pred_m}\\
 v_\ast &= k(x_\ast,x_\ast) - k_\ast^\top (K+\sigma^2 I_N)^{-1}k_\ast,\label{eq:GP_post_pred_v}
 \end{align}
-
 where \(k_\ast = [k(x_1,x_\ast),\ldots,k(x_N,x_\ast)]^\top\).
 
-Exploring the posterior mean and variance in eq.~\eqref{eq:GP_post_pred_m}-\eqref{eq:GP_post_pred_v}, observe that. First, the posterior mean is a linear combination of the observations, with the weights given by the covariance between training and new samples. Second, the posterior variance features two terms: the first is the prior variance and the second one is  a strictly-negative term that's proportional to the covariance between the training and new points.  
+Exploring the posterior mean and variance in eqs.~\eqref{eq:GP_post_pred_m}-\eqref{eq:GP_post_pred_v}, we can draw the following observations. First, the posterior mean is a linear combination of the observations, with the weights given by the covariance between training and new samples. Second, the posterior variance features two terms: the first is the prior variance and the second one is a negative semidefinite term that's proportional to the covariance between the training and new points.  
 
-Algorithm \ref{alg:gp_posterior} presents a a general procedure for prediction using GPs.  
+Algorithm \ref{alg:gp_posterior} presents a general procedure for prediction using GPs.  
 
 \begin{algorithm}[H]
 \caption{Posterior Prediction in Gaussian Process Regression}
@@ -791,6 +793,6 @@ Algorithm \ref{alg:gp_posterior} presents a a general procedure for prediction u
     \includegraphics[width=0.9\textwidth]{img/week4_GP_samples.pdf}
     \includegraphics[width=0.9\textwidth]{img/week4_gp_posterior_untrained.pdf}
     \includegraphics[width=0.9\textwidth]{img/week4_gp_posterior_trained.pdf}
-    \caption{Plots fro the full GP pipeline. From top to botom: prior, data, posterior predictive (untrained) and posterior predictive (trained).}
+    \caption{Plots from the full GP pipeline. From top to bottom: prior, data, posterior predictive (untrained) and posterior predictive (trained).}
     \label{fig:GP_full_example}
 \end{figure}
