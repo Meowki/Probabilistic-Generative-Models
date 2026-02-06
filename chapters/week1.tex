@@ -237,7 +237,7 @@ The model for the observed and latent variable can be expressed as $p(x,z) = p(x
 	&= \log \prod_{n=1}^N\prod_{k=1}^K (\pi_kp_k(x_n))^{z_{nk}} \nonumber \\
 	& = \sum_{n=1}^N\sum_{k=1}^K z_{nk} (\log  \pi_k + \log  p_k(x_n)).
 \end{align}
-Good and bad news: this objective is now theoretically feasible to optimise but impractical since we do not have access to the latent cluster assignments $\{z_{nk}\}_{nk}$. 
+Good and bad news: this objective is now theoretically feasible to optimise but impractical since we do not have access to the latent cluster assignments $\{z_{nk}\}_{nk}$.   
 
 A workaround to this is to replace the cluster assignments $z_{nk}$, by their conditional expectations $\gamma_{nk} = \E{z_{nk}|x_{n}, \theta}$. That is, 
 \begin{align}
