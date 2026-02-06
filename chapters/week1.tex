@@ -225,23 +225,29 @@ Note that there are two issues associated to optimising eq.~\eqref{eq:clustering
 	\item The problem is ill-posed. E.g., if $p_k=\cN(\mu_k,\Sigma_k)$, which is the usual choice, we can set $\mu_k=x_n, \Sigma_k=0$ which gives $l=\infty$.
 \end{itemize}	
 
-We can overcome this drawback by introducing a collection of latent random variables $Z_{nk}\in\{0,1\}$, that represents the cluster assignments. That is, 
+We can explicitly model the cluster assignments by introducing a collection of latent random variables $Z_{nk}\in\{0,1\}, \sum_{k=1}^{K} Z_{nk} = 1$. That is, 
 \begin{equation}
-	Z_{nk} = 1 \iff x_n\in C_k.
+	Z_{nk} = 1 \iff x_n\in C_k,
 \end{equation}
-This allows us to write the conditional densities $p(x_n|z_{nk}) = \prod_{k=1}^K p_k^{z_{nk}}$, and thus to express the \textbf{complete-data likelihood} given by
-\begin{equation}
-	l(\theta) = \log \prod_{n=1}^N\prod_{k=1}^K p_k^{z_{nk}}(x_n) = \sum_{n=1}^N\sum_{k=1}^K z_{nk} \log  p_k(x_n).
-\end{equation}
+where $p(Z_{nk} = 1) = \pi_k$, and more generally $p(z_{nk}) = \prod_{k=1}^{K} \pi_k^{z_{nk}}$.
+
+The model for the observed and latent variable can be expressed as $p(x,z) = p(x\mid z)p(z)$. Since the conditional densities $p(x_n|z_{nk}) = \prod_{k=1}^K (p_k(x_n))^{z_{nk}}$, we can express the \textbf{complete-data likelihood} by
+\begin{align}
+	l_c(\theta) 
+	&= \log \prod_{n=1}^N\prod_{k=1}^K (\pi_kp_k(x_n))^{z_{nk}} \nonumber \\
+	& = \sum_{n=1}^N\sum_{k=1}^K z_{nk} (\log  \pi_k + \log  p_k(x_n)).
+\end{align}
 Good and bad news: this objective is now theoretically feasible to optimise but impractical since we do not have access to the latent cluster assignments $\{z_{nk}\}_{nk}$. 
 
-A workaround to this is to estimate the cluster assignments, via its conditional expectation wrt the observations. That is, 
-\begin{equation}
-	\E{z_{nk}|x_{1:N}} = 1*\P(z_{nk} = 1 |x_n) + 0*\P(z_{nk} = 0 |x_n) = \P(z_{nk} = 1 |x_n), 
-\end{equation}
-which can be computed explicitly using Bayes theorem in terms of the model parameters. Then, we can perform and iterative procedure by: i) optimising $l(\theta)$ using $\E{z_{nk}|x_{1:N}}$, and ii) computing $\E{z_{nk}|x_{1:N}}$ using $\theta_{ML}=\argmax l(\theta)$. 
+A workaround to this is to replace the cluster assignments $z_{nk}$, by their conditional expectations $\gamma_{nk} = \E{z_{nk}|x_{n}, \theta}$. That is, 
+\begin{align}
+	\gamma_{nk}
+	&= 1*\P(z_{nk} = 1 |x_n, \theta) + 0*\P(z_{nk} = 0 |x_n, \theta)\nonumber \\ 
+	&= \frac{\pi_k p_k(x_n \mid \theta)}{\sum_{j=1}^{K}\pi_j p_j(x_n \mid \theta)}.
+\end{align}
+Then, we can perform an iterative procedure by: i) optimising $l_c(\theta)$ using $\gamma_{nk}$ above, and ii) computing $\gamma_{nk}$ using $\theta^\star=\argmax \mathbb{E}_{z\mid x,\theta} [l_c(\theta)]$. 
 
-This means that exact ML cannot be performed in this case. Also, does this procedure seem familiar? 
+Lastly, even though this latent-variable formulation does not solve the ill-posedness problem of the likelihood, it provides a more controlled optimisation strategy that can be monitored (and regularised) to avoid degenerate optima in practice. 
 \end{example}
 
 
