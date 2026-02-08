@@ -1,0 +1,413 @@
+\chapter{Optimal Transport}
+
+\textbf{NB:} This is based on \cite[Ch.~1-2]{peyre_cuturi_2019}.
+
+\section{Motivation}
+
+
+
+\begin{itemize}
+    \item Drawbacks of vertical distances (nonoverlapping support)
+    \item Sense of proximity / convergence
+    \item How to lift the base distance
+\end{itemize}
+
+\section{The Monge problem}
+
+In this part we will consider the assignment problem, that is how to allocate a set of items from a set of source locations to a set of target locations. 
+
+\begin{example}[The vineyard problem]
+    Consider a wine production company, where grapes produced from different vineyards need to be transported to processing plants. An optimal assignment in this case must consider the distance between each vineyard and processing plant, as well as their  production and processing capacities respectively, to achieve the minimum transport cost. See Fig.~\ref{fig:wine_assignment} for an illustration.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{img/week5_wine_assignment.pdf}
+    \caption{Illustration of the vineyard problem.}
+    \label{fig:wine_assignment}
+\end{figure}
+\end{example}
+
+We will consider both discrete and continuous distributions on the items to be assigned (or \emph{transported}), we recall them as follows. 
+
+\begin{definition}[Discrete measure with finite support]
+Let $\mathcal X$ be a set. A measure $\mu$ is \emph{discrete with finite support}
+if there exist points $x_1,\dots,x_n \in \mathcal X$ and weights
+$w_1,\dots,w_n \ge 0$ such that, for any subset $A \subseteq \mathcal X$,
+\[
+\mu(A) = \sum_{i=1}^n w_i\,\mathbf{1}_{\{x_i \in A\}}.
+\]
+Equivalently,
+\[
+\mu = \sum_{i=1}^n w_i\,\delta_{x_i}.
+\]
+The measure $\mu$ is a probability measure if $\sum_{i=1}^n w_i = 1$.
+\end{definition}
+
+
+\begin{definition}[General measure with density]
+Let $\mathcal X \subseteq \mathbb{R}^d$. A measure $\mu$ is said to
+\emph{admit a density} if there exists a nonnegative function
+$\rho : \mathcal X \to [0,\infty)$ such that, for any subset $A \subseteq \mathcal X$,
+\[
+\mu(A) = \int_A \rho(x)\,dx.
+\]
+The measure $\mu$ is a probability measure if
+\[
+\int_{\mathcal X} \rho(x)\,dx = 1.
+\]
+\end{definition}
+
+
+Let us consider two discrete distributions $\mu$ and $\nu$, given by 
+\begin{equation}
+    \mu = \sum_{i=1}^{N}\mu_i\delta_{x_i},\quad \text{and}\quad \nu = \sum_{j=1}^{M} \nu_j\delta_{y_j}.
+\end{equation} 
+The discrete Monge formulation finds a map, denoted $T$, that associates each source point $x_i$ with a single point target $y_j$ in order to allocate the mass from $\mu$ to $\nu$. Note that more than one source point can be allocated to the same target, meaning that the map is surjective yet not necessarily injective. The map $T: \{x_1,x_2,\ldots,x_N\}\to \{y_1,y_2,\ldots,y_M\}$, must verify
+\begin{equation}\label{eq:Monge_PF}
+ \nu_j = \sum_{i:T(x_i)=y_j}\mu_i,\quad \forall j=1,\ldots,M,
+\end{equation}
+meaning that $\nu$ is the \emph{push-forward measure} of $\mu$ through $T$. 
+
+Among the possible maps that fulfil eq.~\eqref{eq:Monge_PF}, Monge's formulation should minimise a given transportation cost, defined over the source-target pairs. Denoting the transport cost by $c:\{x_1,x_2,\ldots,x_N\}\times \{y_1,y_2,\ldots,y_M\} \to \R_+$, the optimal map is
+\begin{equation}
+    T^* = \argmin_{T_\#\mu=\nu}\, \sum_{i=1}^N c(x_i,T(x_i))   
+\end{equation}
+
+\begin{example}[The assignment problem]
+    When $N=M$ and all masses are equal, that is, $\mu_i = \nu_j = 1/N, \forall i,j$, the mass conservation constraint implies that $T$ is bijective. 
+\end{example}
+
+\begin{remark}[Existence and uniqueness]
+    Monge maps may not exist in the general case. In particular, if $M>N$, a Monge map cannot exist since mass cannot be split. Furthermore, depending on the cost function, multiple maps can achieve the same optimal cost. See Fig.~\ref{fig:Monge_existence_uniqueness} for an illustration.
+
+    \begin{figure}
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/week5_existence_uniqueness.pdf}
+    \caption{Monge's map may be non-unique (left) or may not even exist (right) in particular cases.}
+    \label{fig:Monge_existence_uniqueness}
+\end{figure}
+\end{remark}
+
+The Monge problem can also be formulated for general (continuous and/or discrete) measures. Let us consider two measures with densities $\mu$ and $\nu$ supported on spaces $\cX$ and $\cY$ respectively, and a cost function $c:\cX\times\cY\to\R_+$.  In this case, the Monge map is given by 
+
+\begin{equation}
+    T^* = \argmin_{T_\#\mu=\nu}\, \int_{\cX} c(x,T(x))\mu(x)\dx   
+\end{equation}
+
+See Fig.~\ref{fig:monge_diagram} for an illustration.\footnote{Infinite thanks to Elsa Cazelles (IRIT, CNRS) for kindly sharing these beautiful \texttt{tikz} figures.}
+
+
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[>=stealth,scale=1.75]
+    \small
+    \blobA[dashed]{a}{0,0}
+    \blobB[dashed]{b}{3,0}
+    \node at(0.2,0) {$\cX$};
+        \node at(3.2,0) {$\cY$};
+    \draw[->] (1.8,1) to[bend left] node[above]{$T$} (3.1,1); 
+    \node at(1.5,-0.5) {\footnotesize $A=\{x\in\cX:T(x)\in B\}$};
+    \node at(3.55,0) {\scriptsize $B$};
+    \draw[->] (0.75,-0.4) to (1.05,-0.05);   
+    \node at(6,0.5) {$T\#{\color{red!50} \mu} = {\color{blue!50} \nu}$};
+    \node at(6.3,0.2) {i.e., ${\color{red!50} \mu(A)} = {\color{blue!50} \nu(B)}$};
+    \end{tikzpicture}
+    \caption{Illustration of the Monge map for continuous measures,  adapted from \protect\cite{thorpe_2018_intro_ot}.}
+    \label{fig:monge_diagram}
+\end{figure}
+
+We will be particularly interested when the measures involved are probability measures associated to random variables $X$ and $Y$, this is because we want to rely on the theory of mass transport to construct generative models. However, let us see that in the standard formulation of the Monge map, this is very limiting since we cannot deal with general cases beyond the histograms with the same number of atoms and uniform weights. In particular, modelling the association between the supports of $\mu$ and $\nu$ by the map $T$, does not allow for mass splitting. 
+
+
+\section{Kantorovich relaxation}
+
+To allow for the mass of $\mu$ at a given location to be split and then transported to different locations to match $\nu$, Kantorovich's formulation relaxes the deterministic nature of Monge's transport, considering a probabilistic transport instead.
+
+We now return to the discrete measure setting with measures $\mu$ and $\nu$. Rather than considering a transport map, we will then consider a transport plan (or coupling) $P\in\R^{N\times M}$, where $P_{i,j}$ describes the amount of mass that goes from $x_i$ to $y_j$. Just as we saw that the set of admissible maps are those that fulfil the pushforward condition, the set of admissible plans are 
+\begin{equation}
+    \Pi(\mu,\nu) \defeq \{ P\in\R_+^{N\times M}, \text{s.t.,} P\one_M = \mu\quad \text{and}\quad P^\top\one_N = \nu  \},
+\end{equation}
+where $\one_M\in\R^M$ denotes a column vector on ones of dimension $M$. 
+Note that, unlike the map formulation, the transport plan is always symmetric, i.e., $P\in\Pi(\mu,\nu) \iff P^\top\in\Pi(\nu, \mu)$
+
+\begin{remark}
+    The set $\Pi(\mu,\nu)$ is defined by $N+M$ equality constraints and this is a convex polytope, that is, the convex hull of a finite set of matrices. The vertices of this polytope will be of particular interest.  
+\end{remark}
+
+Then considering a cost matrix $C_{ij} = c(x_i,y_j)$, Kantorovich's optimal transport cost can be defined as 
+\begin{equation}\label{eq:kantorovich_discrete}
+    L(\mu,\nu) \defeq \min_{P\in\Pi(\mu,\nu)}
+ \langle C,P\rangle = \sum_{i,j=1}^{N,M} C_{ij}P_{ij}
+\end{equation}
+
+\begin{example}[Vineyards and wineries]
+To develop an intuition of Kantorovich's problem suppose an operator manages \(n\) vineyards and \(m\) wine processing plants. Each vineyard, indexed by \(i\), produces \(\mu_i\) units of grapes
+during the harvest season. These grapes must be transported in their entirety to the processing plants, where each plant \(j\) requires exactly \(\nu_j\) units of grapes in order to operate at full capacity.
+
+To transport grapes from vineyard \(i\) to processing plant \(j\), the operator relies on a logistics provider that charges a cost \(C_{i,j}\) per unit of grapes transported along that route. The pricing scheme is linear and uniform: shipping \(a\) units of grapes from vineyard \(i\) to plant \(j\) incurs a total cost of \(a\,C_{i,j}\).
+
+The goal of the operator is to determine how much grape mass should be sent from each vineyard to each processing plant so as to satisfy all supply and demand constraints while minimizing the total transportation cost.
+
+See Fig.~\ref{fig:Kantorovich_diagram} for an illustration. 
+\end{example}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\textwidth]{img/week5_wine_assignment_split.pdf}
+    \vspace{2em}
+
+    \includegraphics[width=0.9\textwidth]{img/week5_kantorovich.pdf}
+    \caption{Illustration of Kantorovich's formulation: mass splitting (top) and transport plan with cost matrix.}
+    \label{fig:Kantorovich_diagram}
+\end{figure}
+
+\begin{remark}
+    Observe that $\Pi(\mu,\nu)$ always has at least one element, given by $\mu \nu^\top$, known as the independent coupling. Therefore, Kantorovich's formulation always has a solution.
+\end{remark}
+
+\vspace{2cm}
+
+\begin{remark}[Equivalence between Monge and Kantorovich.]
+Whenever the Monge problem admits a solution, the Kantorovich formulation is
+equivalent to it. More precisely, if there exists an optimal transport map
+\(T:\cX\to\cY\) pushing \(\mu\) onto \(\nu\), then the associated transport plan
+\(\pi_T \in \Pi(\mu,\nu)\), defined by
+\[
+\pi_T(x,y) = \mu(x)\,\mathbf{1}_{\{y=T(x)\}},
+\]
+is an optimal solution of the Kantorovich problem and both formulations attain
+the same optimal cost. In this case, the optimal Kantorovich plan is supported on
+the graph of the map \(T\).
+
+Conversely, when no optimal transport map exists, the Monge problem is ill-posed,
+while Kantorovich’s relaxation remains well-defined and admits at least one
+solution, possibly involving mass splitting.
+\end{remark}
+
+The Kantorovich problem naturally extends to general (continuous and/or discrete)
+measures. Let \(\mu\) and \(\nu\) be two measures supported on spaces \(\cX\) and
+\(\cY\), respectively, and let \(c:\cX\times\cY\to\R_+\) be a cost function. A
+\emph{transport plan} is now a measure \(\pi\) on the product space
+\(\cX\times\cY\) whose marginals coincide with \(\mu\) and \(\nu\), that is,
+\[
+\int_{\cY} \pi(x,y)\,dy = \mu(x),
+\qquad
+\int_{\cX} \pi(x,y)\,dx = \nu(y).
+\]
+The Kantorovich optimal transport cost is then defined as
+\begin{equation}\label{eq:kantorovich_continuous}
+    L(\mu,\nu)
+\defeq
+\min_{\pi\in\Pi(\mu,\nu)}
+\int_{\cX\times\cY} c(x,y)\, d\pi(x,y),
+\end{equation}
+where \(\Pi(\mu,\nu)\) denotes the set of all admissible couplings between \(\mu\)
+and \(\nu\). Unlike the Monge formulation, this problem always admits at least one
+solution under mild assumptions on \(c\).
+
+
+\begin{theorem}[Brenier]
+Let $\mu$ and $\nu$ be probability measures on $\mathbb{R}^d$ with finite second
+moments. Assume that $\mu$ admits a density with respect to the Lebesgue measure,
+and consider the quadratic cost
+\[
+c(x,y) = \|x-y\|^2.
+\]
+Then the Kantorovich problem between $\mu$ and $\nu$ admits a unique optimal
+solution. Moreover, this optimal transport plan is induced by a map
+$T:\mathbb{R}^d \to \mathbb{R}^d$ of the form
+\[
+T(x) = \nabla \varphi(x),
+\]
+where $\varphi:\mathbb{R}^d \to \mathbb{R}$ is a convex function. In particular,
+$T$ is the unique optimal solution of the Monge problem.
+\end{theorem}
+
+\begin{corollary}[Brenier’s theorem in one dimension]
+Let $\mu$ and $\nu$ be probability measures on $\mathbb{R}$, and assume that
+$\mu$ admits a density. Consider the quadratic cost $c(x,y) = (x-y)^2$.
+Then the unique optimal transport map from $\mu$ to $\nu$ is given by the
+\emph{monotone rearrangement}
+\[
+T(x) = F_\nu^{-1}(F_\mu(x)),
+\]
+where $F_\mu(x) = \mu((-\infty,x])$ and $F_\nu^{-1}(t) = \inf\{y\in\mathbb{R} : F_\nu(y)\ge t\}$
+denote the cumulative distribution function of $\mu$ and the quantile function
+of $\nu$, respectively. The corresponding Kantorovich optimal plan is supported
+on the graph of $T$.
+\end{corollary}
+
+
+
+\section{Calculating OT}
+
+\subsection{Linear programming}
+
+Note that Kantorovich's problem is defined by the linear programme in eqs.~\eqref{eq:kantorovich_discrete} or \eqref{eq:kantorovich_continuous}. Recall that the feasible set of the discrete optimal transport problem is the convex and compact transport polytope $\Pi(\mu,\nu)$, defined by the linear
+equality and inequality constraints. Since the objective function
+$\langle C,P\rangle$ is linear in $P$, the optimal plan is found at an extreme point (vertex) of the polytope. As a consequence, OT plans (in the discrete setting) are typically sparse. See Fig.~\ref{fig:polyotope1} for an illustration.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\textwidth]{img/week5_polytope1.pdf}
+    \caption{Illustration of the transport polytope and the attained optimal plan.}
+    \label{fig:polyotope1}
+\end{figure}
+
+\begin{remark}[Simplex method]
+The simplex method is a classical algorithm for solving linear programs, usually used to solve Kantorovich's OT formulation. It operates by moving along the edges of the feasible polytope from one vertex to another, at each step decreasing the value of the objective function, until no adjacent vertex yields further improvement. Since the optimum of a linear program is attained at a vertex of the feasible set, the simplex method
+terminates at an optimal solution after visiting only a (typically small) subset of all vertices.
+\end{remark}
+
+
+\begin{algorithm}[H]
+\caption{Discrete optimal transport via a linear program (no toolbox)}
+\label{alg:kantorovich}
+\begin{algorithmic}[1]
+\Require Weights $\mu\in\mathbb{R}^n_+$, $\nu\in\mathbb{R}^m_+$ with $\sum_i \mu_i=\sum_j \nu_j$; cost matrix $C\in\mathbb{R}^{n\times m}$
+\Ensure Optimal transport plan $P^\star\in\mathbb{R}^{n\times m}_+$ and cost $OT(\mu,\nu)$
+\State \textbf{Define decision variables:} $P\in\mathbb{R}^{n\times m}$
+\State \textbf{Form constraints (transport polytope):}
+\[
+P \ge 0,\qquad P\mathbf{1}_m=\mu,\qquad P^\top \mathbf{1}_n=\nu
+\]
+\State \textbf{Define objective:}
+\[
+\min_{P}\ \langle C,P\rangle \;\defeq\; \sum_{i=1}^n\sum_{j=1}^m C_{ij}P_{ij}
+\]
+\State \textbf{Solve the linear program} with any generic LP solver (simplex / interior-point)
+\State \textbf{Return} $P^\star$ (an optimal feasible plan) and $OT(\mu,\nu)=\langle C,P^\star\rangle$
+\end{algorithmic}
+\end{algorithm}
+
+Algorithm \ref{alg:kantorovich} presents te procedure to solve the OT problem. For illustration, Figs.~\ref{fig:kantorovich_example_discrete} and \ref{fig:kantorovich_example_continuous} show implementations of this algorithm. 
+
+
+\begin{figure}
+    \centering
+    \includegraphics[height=0.4\textwidth]{img/week5_kantorovich_discrete_histogram.pdf}
+    \includegraphics[height=0.4\textwidth]{img/week5_kantorovich_discrete_solution.pdf}
+    \caption{Computation of optimal plan (discrete): Source and target discrete distributions (left) and the optimal plan (right) for a given cost matrix. Observe how the plan is sparse, meaning that the mass at each source location is split into only a few of target locations.}
+    \label{fig:kantorovich_example_discrete}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{img/week5_kantorovich_continuous_density.pdf}
+    \includegraphics[width=0.3\textwidth]{img/week5_kantorovich_continuous_solution.pdf}
+    \caption{Computation of optimal plan between Gaussian mixtures using the $L_2$ cost (discrete, but more dense): Source and target discrete distributions (left) and the optimal plan (right) for a given cost matrix. Observe how the plan seems extremely sparse with the plans almost completely supported on the plot of a function. Though this a discrete example, since mixture of Gaussians are absolutely continuous, the OT cost is unique and equal to Monge's solution (Brenier thm), which can seen from the plot. Furthermore, also in line with Brenier thm,  note that the transport is monotonic, meaning transported masses \emph{do not cross paths}.}    
+    \label{fig:kantorovich_example_continuous}
+\end{figure}
+
+
+\paragraph{Optimal transport between Gaussian measures.}
+A particularly important special case arises when considering optimal transport
+with the quadratic cost \(c(x,y)=\|x-y\|_2^2\) between two Gaussian measures.
+Let \(\mu=\mathcal{N}(m_\mu,\Sigma_\mu)\) and \(\nu=\mathcal{N}(m_\nu,\Sigma_\nu)\)
+be Gaussian distributions on \(\mathbb{R}^d\). Since Gaussian measures admit
+densities, the Monge problem admits a unique solution. In this case, the optimal
+transport map has a closed-form expression and is affine, given by
+\[
+T(x) = m_\nu + A(x-m_\mu),
+\qquad
+A = \Sigma_\mu^{-1/2}
+\left(\Sigma_\mu^{1/2}\Sigma_\nu\Sigma_\mu^{1/2}\right)^{1/2}
+\Sigma_\mu^{-1/2}.
+\]
+The corresponding optimal transport cost, also known as the squared
+\(2\)-Wasserstein distance between \(\mu\) and \(\nu\), decomposes into a term
+measuring the distance between the means and a term measuring the discrepancy
+between the covariances:
+\[
+W_2^2(\mu,\nu)
+=
+\|m_\mu-m_\nu\|_2^2
++
+\mathrm{Tr}\!\left(
+\Sigma_\mu+\Sigma_\nu
+-
+2\left(\Sigma_\mu^{1/2}\Sigma_\nu\Sigma_\mu^{1/2}\right)^{1/2}
+\right).
+\]
+In the one-dimensional case, this simplifies considerably: the optimal transport
+map reduces to a simple rescaling and translation,
+\(T(x)=m_\nu+\frac{\sigma_\nu}{\sigma_\mu}(x-m_\mu)\), and the transport cost
+admits a closed-form expression in terms of the means and variances.
+
+
+\paragraph{Optimal transport in one dimension.}
+A remarkable feature of optimal transport is that, in one dimension, the problem
+admits a closed-form solution. Let $\mu$ and $\nu$ be probability measures on
+$\mathbb{R}$. The optimal transport map is given by the \emph{monotone
+rearrangement}, which matches equal quantiles of the two distributions. This
+construction is illustrated in Fig.~\ref{fig:1d_data}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{img/week5_1dim_data.pdf}
+    \caption{Two one-dimensional probability distributions. Optimal transport
+    matches points with equal cumulative mass.}
+    \label{fig:1d_data}
+\end{figure}
+
+Denote by $F_\mu$ the cumulative distribution function of $\mu$, and by
+$F_\mu^{-}:[0,1]\to\mathbb{R}$ its inverse (quantile function), defined as
+\[
+F_\mu^{-}(t) = \inf\{x\in\mathbb{R} : F_\mu(x)\ge t\}, \qquad t\in[0,1].
+\]
+Then, for any $p\ge 1$, the $p$-Wasserstein distance between $\mu$ and $\nu$ admits
+the explicit expression
+\[
+W_p^p(\mu,\nu)
+=
+\int_0^1 \bigl(F_\mu^{-}(t)-F_\nu^{-}(t)\bigr)^p\,dt
+=
+\|F_\mu^{-}-F_\nu^{-}\|_{L^p([0,1])}^p.
+\]
+This representation, illustrated in Fig.~\ref{fig:1d_quantiles}, shows that
+one-dimensional optimal transport reduces to measuring the $L^p$ distance
+between quantile functions.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{img/week5_1dim_data_quant.pdf}
+    \caption{Quantile functions of the two distributions. The Wasserstein
+    distance corresponds to the $L^p$ distance between them.}
+    \label{fig:1d_quantiles}
+\end{figure}
+
+The same monotone matching principle applies to discrete one-dimensional
+measures. In this case, optimal transport is obtained by sorting the atoms of
+$\mu$ and $\nu$ and matching them in increasing order, as illustrated in
+Fig.~\ref{fig:1d_discrete}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.8]{img/week5_one_dim_discrete.pdf}
+    \caption{Optimal transport between discrete one-dimensional measures:
+    atoms are matched according to their cumulative mass.}
+    \label{fig:1d_discrete}
+\end{figure}
+
+\missing{Sinkhorn to be added next}
+
+
+\section{Metric properties}
+
+\begin{itemize}
+    \item define distance, why is W a distance
+    \item Geometry and weak convergence
+    \item dual problem won't be covered
+    \item barycenters and interpolants
+\end{itemize}
+
+
+
+
+
+\section{Application: colour transfer}
+
+
+
+
+
