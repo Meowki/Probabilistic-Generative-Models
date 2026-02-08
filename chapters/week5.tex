@@ -240,7 +240,97 @@ on the graph of $T$.
 
 \section{Calculating OT}
 
-\subsection{Linear programming}
+\paragraph{Particular case 1: Gaussian measures.}
+A particularly important special case arises when considering optimal transport
+with the quadratic cost \(c(x,y)=\|x-y\|_2^2\) between two Gaussian measures.
+Let \(\mu=\mathcal{N}(m_\mu,\Sigma_\mu)\) and \(\nu=\mathcal{N}(m_\nu,\Sigma_\nu)\)
+be Gaussian distributions on \(\mathbb{R}^d\). Since Gaussian measures admit
+densities, the Monge problem admits a unique solution. In this case, the optimal
+transport map has a closed-form expression and is affine, given by
+\[
+T(x) = m_\nu + A(x-m_\mu),
+\qquad
+A = \Sigma_\mu^{-1/2}
+\left(\Sigma_\mu^{1/2}\Sigma_\nu\Sigma_\mu^{1/2}\right)^{1/2}
+\Sigma_\mu^{-1/2}.
+\]
+The corresponding optimal transport cost, also known as the squared
+\(2\)-Wasserstein distance between \(\mu\) and \(\nu\), decomposes into a term
+measuring the distance between the means and a term measuring the discrepancy
+between the covariances:
+\[
+W_2^2(\mu,\nu)
+=
+\|m_\mu-m_\nu\|_2^2
++
+\mathrm{Tr}\!\left(
+\Sigma_\mu+\Sigma_\nu
+-
+2\left(\Sigma_\mu^{1/2}\Sigma_\nu\Sigma_\mu^{1/2}\right)^{1/2}
+\right).
+\]
+In the one-dimensional case, this simplifies considerably: the optimal transport
+map reduces to a simple rescaling and translation,
+\(T(x)=m_\nu+\frac{\sigma_\nu}{\sigma_\mu}(x-m_\mu)\), and the transport cost
+admits a closed-form expression in terms of the means and variances.
+
+
+\paragraph{Particular case 2: 1-dimensional measures.}
+A remarkable feature of optimal transport is that, in one dimension, the problem
+admits a closed-form solution. Let $\mu$ and $\nu$ be probability measures on
+$\mathbb{R}$. The optimal transport map is given by the \emph{monotone
+rearrangement}, which matches equal quantiles of the two distributions. This
+construction is illustrated in Fig.~\ref{fig:1d_data}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{img/week5_1dim_data.pdf}
+    \caption{Two one-dimensional probability distributions. Optimal transport
+    matches points with equal cumulative mass.}
+    \label{fig:1d_data}
+\end{figure}
+
+Denote by $F_\mu$ the cumulative distribution function of $\mu$, and by
+$F_\mu^{-}:[0,1]\to\mathbb{R}$ its inverse (quantile function), defined as
+\[
+F_\mu^{-}(t) = \inf\{x\in\mathbb{R} : F_\mu(x)\ge t\}, \qquad t\in[0,1].
+\]
+Then, for any $p\ge 1$, the $p$-Wasserstein distance between $\mu$ and $\nu$ admits
+the explicit expression
+\[
+W_p^p(\mu,\nu)
+=
+\int_0^1 \bigl(F_\mu^{-}(t)-F_\nu^{-}(t)\bigr)^p\,dt
+=
+\|F_\mu^{-}-F_\nu^{-}\|_{L^p([0,1])}^p.
+\]
+This representation, illustrated in Fig.~\ref{fig:1d_quantiles}, shows that
+one-dimensional optimal transport reduces to measuring the $L^p$ distance
+between quantile functions.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{img/week5_1dim_data_quant.pdf}
+    \caption{Quantile functions of the two distributions. The Wasserstein
+    distance corresponds to the $L^p$ distance between them.}
+    \label{fig:1d_quantiles}
+\end{figure}
+
+The same monotone matching principle applies to discrete one-dimensional
+measures. In this case, optimal transport is obtained by sorting the atoms of
+$\mu$ and $\nu$ and matching them in increasing order, as illustrated in
+Fig.~\ref{fig:1d_discrete}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.8]{img/week5_one_dim_discrete.pdf}
+    \caption{Optimal transport between discrete one-dimensional measures:
+    atoms are matched according to their cumulative mass.}
+    \label{fig:1d_discrete}
+\end{figure}
+
+
+\paragraph{General case through linear programming.}
 
 Note that Kantorovich's problem is defined by the linear programme in eqs.~\eqref{eq:kantorovich_discrete} or \eqref{eq:kantorovich_continuous}. Recall that the feasible set of the discrete optimal transport problem is the convex and compact transport polytope $\Pi(\mu,\nu)$, defined by the linear
 equality and inequality constraints. Since the objective function
@@ -299,97 +389,67 @@ Algorithm \ref{alg:kantorovich} presents te procedure to solve the OT problem. F
     \label{fig:kantorovich_example_continuous}
 \end{figure}
 
+\begin{remark}
+    Kantorovich's formulation allows for a well-posed optimisation problem with attractive uniqueness and existence properties, and numerically stable solutions. However, there are two main drawback of addressing the computation of the  OT via linear programming: first, the computational cost becomes prohibitive when the number of atoms grow beyond $\approx10^4$. Second, solutions are sparse, quasi-deterministic, matrices given by the vertex of $\Pi(\mu,\nu)$.
+\end{remark}
 
-\paragraph{Optimal transport between Gaussian measures.}
-A particularly important special case arises when considering optimal transport
-with the quadratic cost \(c(x,y)=\|x-y\|_2^2\) between two Gaussian measures.
-Let \(\mu=\mathcal{N}(m_\mu,\Sigma_\mu)\) and \(\nu=\mathcal{N}(m_\nu,\Sigma_\nu)\)
-be Gaussian distributions on \(\mathbb{R}^d\). Since Gaussian measures admit
-densities, the Monge problem admits a unique solution. In this case, the optimal
-transport map has a closed-form expression and is affine, given by
-\[
-T(x) = m_\nu + A(x-m_\mu),
-\qquad
-A = \Sigma_\mu^{-1/2}
-\left(\Sigma_\mu^{1/2}\Sigma_\nu\Sigma_\mu^{1/2}\right)^{1/2}
-\Sigma_\mu^{-1/2}.
-\]
-The corresponding optimal transport cost, also known as the squared
-\(2\)-Wasserstein distance between \(\mu\) and \(\nu\), decomposes into a term
-measuring the distance between the means and a term measuring the discrepancy
-between the covariances:
-\[
-W_2^2(\mu,\nu)
-=
-\|m_\mu-m_\nu\|_2^2
-+
-\mathrm{Tr}\!\left(
-\Sigma_\mu+\Sigma_\nu
--
-2\left(\Sigma_\mu^{1/2}\Sigma_\nu\Sigma_\mu^{1/2}\right)^{1/2}
-\right).
-\]
-In the one-dimensional case, this simplifies considerably: the optimal transport
-map reduces to a simple rescaling and translation,
-\(T(x)=m_\nu+\frac{\sigma_\nu}{\sigma_\mu}(x-m_\mu)\), and the transport cost
-admits a closed-form expression in terms of the means and variances.
+\paragraph{Entropy-regularised OT (Sinkhorn).}
 
+For $\alpha\in\R_+$, define
+\begin{equation}
+    \Pi_\alpha(\mu,\nu) = \left\{ \pi\in\Pi(\mu,\nu) : \KL{\pi}{\mu\otimes\nu}\leq\alpha    \right\},
+\end{equation}
+and consider the constrained OT problem wrt the cost $C$:
+\begin{equation}
+    \pi_\alpha^\star = \argmin_{\pi\in\Pi_\alpha(\mu,\nu)} \langle C ,\pi \rangle.
+    \label{eq:optimal_pi_reg1}
+\end{equation}
+Fig.~\ref{fig:polyotope2} shows an illustration of this optimisation problem.
 
-\paragraph{Optimal transport in one dimension.}
-A remarkable feature of optimal transport is that, in one dimension, the problem
-admits a closed-form solution. Let $\mu$ and $\nu$ be probability measures on
-$\mathbb{R}$. The optimal transport map is given by the \emph{monotone
-rearrangement}, which matches equal quantiles of the two distributions. This
-construction is illustrated in Fig.~\ref{fig:1d_data}.
-
-\begin{figure}[h]
+\begin{figure}
     \centering
-    \includegraphics[scale=0.5]{img/week5_1dim_data.pdf}
-    \caption{Two one-dimensional probability distributions. Optimal transport
-    matches points with equal cumulative mass.}
-    \label{fig:1d_data}
+    \includegraphics[width=0.4\textwidth]{img/week5_polytope2.pdf}
+    \caption{Illustration of the transport polytope $\Pi(\mu,\nu)$, the defined subset $\Pi_\alpha(\mu,\nu)$ and their respective optimal plans.}
+    \label{fig:polyotope2}
 \end{figure}
 
-Denote by $F_\mu$ the cumulative distribution function of $\mu$, and by
-$F_\mu^{-}:[0,1]\to\mathbb{R}$ its inverse (quantile function), defined as
-\[
-F_\mu^{-}(t) = \inf\{x\in\mathbb{R} : F_\mu(x)\ge t\}, \qquad t\in[0,1].
-\]
-Then, for any $p\ge 1$, the $p$-Wasserstein distance between $\mu$ and $\nu$ admits
-the explicit expression
-\[
-W_p^p(\mu,\nu)
-=
-\int_0^1 \bigl(F_\mu^{-}(t)-F_\nu^{-}(t)\bigr)^p\,dt
-=
-\|F_\mu^{-}-F_\nu^{-}\|_{L^p([0,1])}^p.
-\]
-This representation, illustrated in Fig.~\ref{fig:1d_quantiles}, shows that
-one-dimensional optimal transport reduces to measuring the $L^p$ distance
-between quantile functions.
+Given that the optimisation variable in this setting is $\pi$, note that we can write 
+\begin{align}
+    \KL{\pi}{\mu\otimes\nu} 
+    &= \sum_{i,j=1}^{N,M} \pi_{i,j}\log\frac{\pi_{i,j}}{\mu_i\nu_j} \nonumber \\
+    &\propto  \sum_{i,j=1}^{N,M} \pi_{i,j}\log \pi_{i,j} \nonumber\\
+    &=  -H(\pi).
+\end{align}
+As a consequence, the optimal plan in eq.~\eqref{q:optimal_pi_reg1} can be rewritten using a Lagrangian formulation as 
+\begin{equation}
+    \pi_\alpha^\star = \argmin_{\pi\in\Pi(\mu,\nu)} \langle C ,\pi \rangle - \frac{1}{\lambda} H(\pi),
+    \label{eq:optimal_pi_reg2}
+\end{equation}
+where there one, and only one, $\alpha\in\R_+$ for each $\lambda\in\R_+$.
 
-\begin{figure}[h]
+The Lagrangian is given by 
+
+$$\mathcal{L}(\pi,\alpha,\beta) = \sum_{ij} \frac{1}{\lambda}\pi_{ij} \log\pi_{ij} + \pi_{ij}c_{ij} + \alpha^\top(\pi\mathbf{1}_m - \mu) + \beta^\top(\pi^\top\mathbf{1}_n - \nu)$$
+and thus $\partial \mathcal{L} / \partial \pi_{ij} = 0 \Rightarrow \pi_{ij} = e^{-1/2-\lambda\alpha_i}e^{-\lambda c_{ij}}e^{-1/2-\lambda\beta_j}$, meaning that the solution has the form
+$$\pi_\lambda^* = \diag(u) K \diag(v),$$
+where $K= \exp\left(-\lambda C \right) $. \\
+
+Finding $u$ and $v$ is not easy. However, [Sinkhorn, 1964] states that since the entries of $K$ are positive, there is an unique $K$ such that $\diag(u) K \diag(v)\in\Pi({\mu},{\nu})$. Therefore, $u,v$ need to be modified such that $\diag(u) K \diag(v)$ is projected onto $\Pi({\mu},{\nu})$, that is (Sinkhorn iterations),
+\begin{equation}
+    (u,v) \leftarrow (\mu./Kv, \nu./K'u ).
+\end{equation}
+
+Fig.~\ref{fig:sinkhorn_iterations} shows an illustration of optimal transport plans found via linear programming and sinkhorn.
+
+\begin{figure}
     \centering
-    \includegraphics[scale=0.5]{img/week5_1dim_data_quant.pdf}
-    \caption{Quantile functions of the two distributions. The Wasserstein
-    distance corresponds to the $L^p$ distance between them.}
-    \label{fig:1d_quantiles}
+    \includegraphics[width=0.45\textwidth]{img/week5_EMD_vs_S1.pdf}
+    \hfill
+    \includegraphics[width=0.45\textwidth]{img/week5_EMD_vs_S2.pdf}   
+    \caption{Optimal transport plans between 2-component Gaussian mixtures: linear programming (left) and Sinkhorn iterations (right).}
+    \label{fig:sinkhorn_iterations}
 \end{figure}
 
-The same monotone matching principle applies to discrete one-dimensional
-measures. In this case, optimal transport is obtained by sorting the atoms of
-$\mu$ and $\nu$ and matching them in increasing order, as illustrated in
-Fig.~\ref{fig:1d_discrete}.
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[scale=0.8]{img/week5_one_dim_discrete.pdf}
-    \caption{Optimal transport between discrete one-dimensional measures:
-    atoms are matched according to their cumulative mass.}
-    \label{fig:1d_discrete}
-\end{figure}
-
-\missing{Sinkhorn to be added next}
 
 
 \section{Metric properties}
