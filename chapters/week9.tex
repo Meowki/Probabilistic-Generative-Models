@@ -74,7 +74,7 @@ The two challenges described above will be addressed by introducing a smoothed v
     \frac{1}{2}
     \mathbb{E}_{p_\text{data}(\x)}||s_\theta(\x) - \nabla_\x\log p_\text{data}(\x)||_2^2.
 \end{equation}
-Note that this loss is intractable due to requiring the evaluation of the unknown data distribution. Thi, can be bypassed considering the equivalent expression as noted by \cite[Thm.~1]{hyvarinen2005score}
+Note that this loss is intractable, as it requires evaluating of the unknown data distribution. This can be bypassed considering the equivalent expression as noted by \cite[Thm.~1]{hyvarinen2005score}
 \begin{equation}
      \label{eq:SM_loss2}
     \cL_{\text{SM}}(\theta) 
@@ -99,7 +99,7 @@ As noted by \cite{vincent2011connection}, applying the score-matching objective 
     \nabla_{\tilde{\x}} \log q_\sigma(\tilde{\x}\mid\x)
     \right\|_2^2,
 \end{equation}
-meaning that the minimiser of eq.~\eqref{eq:DSM_loss} satisfies $s_\theta(\x)^*=\nabla_\x\log q_\sigma(\x)$. 
+meaning that the minimiser of eq.~\eqref{eq:DSM_loss} satisfies $s_\theta(\tilde\x)^*=\nabla_{\tilde\x}\log q_\sigma(\tilde\x)$. 
 
 \begin{remark}[Validity of the denoising score matching objective]
 If the perturbation kernel $q_\sigma(\tilde{\x}\mid\x)$ is sufficiently concentrated around $\x$ (e.g.\ small $\sigma$ in the Gaussian case), then the perturbed marginal
@@ -116,15 +116,13 @@ Using the perturbation kernel $q_\sigma(\tilde{\x}\mid\x)$, the DSM objective ab
 
 Understanding the perturbation kernel as the injection of (Gaussian) noise with variance $\sigma^2$, \cite{song2021scorebased} builds on the observations above to propose a noise-indexed neural network to estimate the score for varying levels of noise defined as follows. 
 
-Let $\{\sigma_i\}_{i=1}^L$ be a geometric sequence satisfying $\sigma_1 > \sigma_2 > \cdots \sigma_L>0$, and choose a Gaussian perturbation kernel to construct $L$ noise-injected versions of the data distribution, with the $i-$th level perturbed density given by 
-
+Let $\{\sigma_i\}_{i=1}^L$ be a geometric sequence satisfying $\sigma_1 > \sigma_2 > \cdots > \sigma_L>0$, and choose a Gaussian perturbation kernel to construct $L$ noise-injected versions of the data distribution, with the $i-$th level perturbed density given by 
 \begin{equation}
-    q_{\sigma_i} (\x)= \int p_{\mathrm{data}}(\x') \cN(\x \mid \x',\sigma_i^2 \I_D. )
+    q_{\sigma_i} (\x)= \int p_{\mathrm{data}}(\x') \cN(\x \mid \x',\sigma_i^2 \I_D).
 \end{equation}
 Furthermore, the sequence $\{\sigma_i\}_{i=1}^L$ is chosen so that $\sigma_1$ is large enough to mitigate all the issues discussed above and $\sigma_L$ is small enough so that $q_{\sigma_L} (\x) \approx p_{\mathrm{data}}(\x)$.
 
 Since the score of the perturbation kernel is linear, for each noise level $\sigma$ we consider the following DSM target based on eq.~\eqref{eq:DSM_loss} given by 
-
 \begin{equation}
     \label{eq:DSM_loss_noise_level}
     l(\theta;\sigma) = 
@@ -134,17 +132,18 @@ Since the score of the perturbation kernel is linear, for each noise level $\sig
     \right\|^2_2\right),
 \end{equation}
 and then aggregate them across all noise levels
-
 \begin{equation}
     \cL_{\text{NCSN}}(\theta, \{\sigma_i\}_{i=1}^L) = \frac1L \sum_{i=1}^{L} \lambda(\sigma_i) l(\theta;\sigma_i),
 \end{equation}
 where $\lambda(\sigma) = \sigma^2$  ensures that $ \lambda(\sigma) l(\theta;\sigma)$ does not depend on $\sigma$.
 
-To train the noise-conditional score network (NCSN) based on the above loss, it is not necessary to construct and store $L$ separate datasets explicitly. Instead, at each training iteration one samples a datapoint $\x\sim p_{\mathrm{data}}$, then samples a noise level $\sigma_i$ uniformly from the sequence $\{\sigma_i\}_{i=1}^L$, to generate a perturbed sample through
+\begin{remark}[Preparing data for training]
+    Training the noise-conditional score network (NCSN) based on the above loss, does not require to construct and store $L$ separate datasets explicitly. Instead, at each training iteration one samples a datapoint $\x\sim p_{\mathrm{data}}$, then samples a noise level $\sigma_i$ uniformly from the sequence $\{\sigma_i\}_{i=1}^L$, to generate a perturbed sample through
 \[
 \tilde{\x} = \x + \sigma_i \z, \qquad \z \sim \cN(0,\I_D).
 \]
 The pair $(\tilde{\x},\sigma_i)$ is then used to evaluate the objective in eq.~\eqref{eq:DSM_loss_noise_level}, with the perturbed training examples generated during training to construct a Monte Carlo estimate of the loss, This way, there is no need to precompute and store noisy copies of the dataset.
+\end{remark}
 
 
 
