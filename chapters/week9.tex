@@ -1,0 +1,212 @@
+\chapter{Diffusion models}
+
+\textbf{NB:} This is based on \cite{sohldickstein2015deep}, \cite{ho2020denoising}, \cite{song2019generative} and \cite{song2021scorebased}.
+
+
+\paragraph{Motivation.}
+
+The flow-matching framework seen in the last chapter can be considered as an implicit generative model, in the sense that the density is not parametrised directly, but rather induced by a sample-and-transport generative procedure. In this chapter we take an alternative approach to implicit generative modelling which, in the same spirit as VAEs and flow-based methods, starts from a source Gaussian distribution and transforms the samples to match a target density that is only specified by an observed dataset. Though we will see that there is a clear connection between the flow-based approach and the diffusion approaches to be reviewed in this chapter, their main difference is conceptual: while flow methods rely on deterministic dynamics defined by an ODE, diffusion models build upon stochastic dynamics, meaning that the path from source to target has an equivalent stochastic differential equation (SDE) formulation. There are two approaches to materialise this rational as we will see in this chapter: score-based models and diffusion models.
+
+\section{Score-based models}
+
+To bypass the challenge of direct parametrisation of the target density, we instead consider the \emph{score function} of the distribution defined as follows.
+
+\begin{definition}[Score function]
+\label{def:score_function}
+Let $p(\x)$ be a probability density on $\R^D$. The \emph{score function} of the distribution is defined as the gradient of its log-density
+\begin{equation}
+    \label{eq:score_function}
+    s(\x) = \nabla_\x \log p(\x).
+\end{equation}
+\end{definition}
+
+\begin{remark}[Intuition]
+The vector $s(\x)\in\R^D$ points in the direction of the steepest increase of the log-density, that is, toward nearby regions where the density becomes larger. Furthermore, its magnitude reflects how rapidly the density changes around $\x$. Intuitively, if we imagine particles distributed according to $p(\x)$, the score indicates how a particle located at $\x$ should move in order to reach regions of higher probability density.
+\end{remark}
+
+Targetting the score, rather than the density, has clear advantages as discussed in the following remark. 
+
+\begin{remark}[Unrestrictedness of the score]
+    By modelling the score, we lift the restriction to model a normalised function. Indeed, one can write 
+    \[
+    p(\x) = \frac{1}{z}\tilde{p}(\x), \qquad z = \int \tilde{p}(\x)\d\x,
+    \]
+    where $\tilde{p}(\x)$ is the unnormalised version of the density $p(\x)$ which is, arguably, easier to model. This is because we can use an unrestricted class of models, such as neural networks, which would be unfeasible to model densities, because the normalisation restriction could not be directly enforced. The score of such a distribution is
+    \[
+    s(\x) = \nabla_\x\log \tilde{p}(\x) - \cancelto{=0}{\nabla_\x z},
+    \]
+    meaning that the score does not depend on the normalising constant. 
+\end{remark}
+
+Once the score is learnt, via, e.g., a neural network with an appropriate training procedure to be discussed later, we need to implement a methodology to produce samples $\x\sim p(\x)$ by only having access to the score in eq.~\eqref{eq:score_function}; and not to $p(\cdot)$. We will consider the following method. 
+
+
+\begin{definition}[Langevin sampler]
+\label{def:langevin_sampler}
+Let $p(\x)$ be a target density with score function $s(\x)=\nabla_\x \log p(\x)$.
+The Langevin sampler generates samples from $p(\x)$ by iteratively updating
+\begin{equation}
+    \x_{k+1} = \x_k + \frac{\epsilon}{2}s(\x_k) + \sqrt{\epsilon}\,\eta_k,
+\end{equation}
+where $\epsilon>0$ is a step size and $\eta_k \sim \cN(0,\I)$ is Gaussian noise.
+\end{definition}
+
+The update in Def.~\ref{def:langevin_sampler} can be interpreted as a random walk with a correction in the direction of the score, or equivalently, a stochastic gradient ascent step on the log-density combined with Gaussian noise injection. This can be understood as a balance between the score term, which pushes particles toward regions of higher probability mass, and  the noise term, which ensures exploration of the state space.
+
+\begin{remark}[Stationary distribution of Langevin dynamics]
+Under appropriate conditions on the step size and regularity of the score function, the Markov chain defined in Def.~\ref{def:langevin_sampler} admits $p(\x)$ as its stationary distribution. Therefore, as $k \to \infty$, the distribution of
+$\x_k$ converges to $p(\x)$. In practice, after a sufficiently large number of iterations, the samples $\x_k$ can be regarded as approximate draws from the target distribution.
+\end{remark}
+
+\paragraph{Difficulties in score-based generative modelling.} Two main challenges arise in this setting. The first one stems from the so-called \emph{data manifold hypothesis}, which states that, in practice, the data lives in a low-dimensional manifold within the ambient space. As a consequence, even if within the data manifold the density behaves well, as soon as we leave the manifold the probability goes sharply to zero, meaning that the measure is not absolutely continuous wrt the Lebesgue measure and thus the density does not exist. As a consequence, the score is not defined as it involves a gradient taken in the ambient space. Therefore, we cannot attempt to learn the score from data.
+
+A second challenge stems from the data scarcity: to sample using Langevin dynamics, it is required that the score is appropriately estimated on the entire ambient space, so that the sampler can navigate the space from areas of low probability to areas of high probability. However, in the areas of low probability, there will be insufficient samples to train a score function reliably, and this the sampling procedure will not be accurate and the chain will not mix well.  
+
+\begin{remark}[Key idea of the approach]
+The two challenges described above will be addressed by introducing a smoothed version of the data distribution. By perturbing the data with Gaussian noise, the resulting distribution becomes well-defined over the entire ambient space, ensuring that the score exists everywhere. This perturbation will also allow us to construct a synthetic dataset from which the score can be learned.
+\end{remark}
+
+
+\paragraph{Denoising score matching.} In a way that is similar to the flow-matching objective, a parametrised (e.g., neural network) model of the score could be trained by minimising the following so called score-matching loss
+\begin{equation}
+    \label{eq:SM_loss1}
+    \cL_{\text{SM}}(\theta) = 
+    \frac{1}{2}
+    \mathbb{E}_{p_\text{data}(\x)}||s_\theta(\x) - \nabla_\x\log p_\text{data}(\x)||_2^2.
+\end{equation}
+Note that this loss is intractable due to requiring the evaluation of the unknown data distribution. Thi, can be bypassed considering the equivalent expression as noted by \cite[Thm.~1]{hyvarinen2005score}
+\begin{equation}
+     \label{eq:SM_loss2}
+    \cL_{\text{SM}}(\theta) 
+    =
+    \mathbb{E}_{p_\text{data}(\x)}\left[\tr{(\nabla_\x s_\theta(\x))} + \frac{1}{2}||s_\theta(\x)||_2^2\right] + \text{constant},
+\end{equation}
+where the constant does not depend on the model parameter $\theta$. The formulation in eq.~\eqref{eq:SM_loss2} is now tractable since it only depends on the unknown data density via samples, meaning that it can be approximated via Monte Carlo. However, trace of the Jacobian matrix $\nabla_{\x}s_\theta(\x)\in\R^{D\times D}$ has a computational complexity scaling as $\mathcal O(D^2)$, which makes it prohibitively expensive for high-dimensional data such as images. 
+
+An alternative objective can be obtained by first smoothing the data distribution with a corruption kernel \(q_\sigma(\tilde{\x}\mid \x)\), and then applying score matching to the resulting perturbed density
+\begin{equation}
+    \label{eq:perturbed_marginal}
+    q_\sigma(\tilde{\x})=\int q_\sigma(\tilde{\x}\mid \x)\,p_{\mathrm{data}}(\x)\,\d\x.    
+\end{equation}
+As noted by \cite{vincent2011connection}, applying the score-matching objective in eq.~\eqref{eq:SM_loss1} to the perturbed data distribution is equivalent, up to an additive constant independent of \(\theta\), to the denoising score matching objective and it is given by
+\begin{equation}
+    \label{eq:DSM_loss}
+    \cL_{\text{DSM}}(\theta) =
+    \frac{1}{2}
+    \mathbb{E}_{p_{\text{data}}(\x)\, q_\sigma(\tilde{\x}\mid\x)}
+    \left\|
+    s_\theta(\tilde{\x}) -
+    \nabla_{\tilde{\x}} \log q_\sigma(\tilde{\x}\mid\x)
+    \right\|_2^2,
+\end{equation}
+meaning that the minimiser of eq.~\eqref{eq:DSM_loss} satisfies $s_\theta(\x)^*=\nabla_\x\log q_\sigma(\x)$. 
+
+\begin{remark}[Validity of the denoising score matching objective]
+If the perturbation kernel $q_\sigma(\tilde{\x}\mid\x)$ is sufficiently concentrated around $\x$ (e.g.\ small $\sigma$ in the Gaussian case), then the perturbed marginal
+$q_\sigma(\tilde{\x})$ in eq.~\eqref{eq:perturbed_marginal} satisfies
+\[
+q_\sigma(\tilde{\x}) \approx p_{\mathrm{data}}(\tilde{\x}).
+\]
+Consequently, the score of the perturbed density approximates the score of the data distribution, and the minimiser of $\cL_{\mathrm{DSM}}(\theta)$ can be regarded as a reliable approximation of the minimiser of the original score-matching objective $\cL_{\mathrm{SM}}(\theta)$.
+\end{remark}
+
+Using the perturbation kernel $q_\sigma(\tilde{\x}\mid\x)$, the DSM objective above is theoretically appealing in the sense that the density and the score are well defined on the entire ambient space due to the smoothing operation. Intuitively, using a concentrated perturbation allows for a reliable approximation of the data distribution, while a wide support kernel would populate the low-probability regions in the ambient space, thus facilitating the implementation of the Langevin sampler. 
+
+\paragraph{Noise-conditional score network.} 
+
+Understanding the perturbation kernel as the injection of (Gaussian) noise with variance $\sigma^2$, \cite{song2021scorebased} builds on the observations above to propose a noise-indexed neural network to estimate the score for varying levels of noise defined as follows. 
+
+Let $\{\sigma_i\}_{i=1}^L$ be a geometric sequence satisfying $\sigma_1 > \sigma_2 > \cdots \sigma_L>0$, and choose a Gaussian perturbation kernel to construct $L$ noise-injected versions of the data distribution, with the $i-$th level perturbed density given by 
+
+\begin{equation}
+    q_{\sigma_i} (\x)= \int p_{\mathrm{data}}(\x') \cN(\x \mid \x',\sigma_i^2 \I_D. )
+\end{equation}
+Furthermore, the sequence $\{\sigma_i\}_{i=1}^L$ is chosen so that $\sigma_1$ is large enough to mitigate all the issues discussed above and $\sigma_L$ is small enough so that $q_{\sigma_L} (\x) \approx p_{\mathrm{data}}(\x)$.
+
+Since the score of the perturbation kernel is linear, for each noise level $\sigma$ we consider the following DSM target based on eq.~\eqref{eq:DSM_loss} given by 
+
+\begin{equation}
+    \label{eq:DSM_loss_noise_level}
+    l(\theta;\sigma) = 
+    \frac12 \mathbb{E}_{\x\sim p_{\mathrm{data}}(\x), \tilde\x\sim \cN(\x,\sigma^2\I_D)}
+    \left(\left\|
+        s_\theta(\tilde{\x},\sigma) + \frac{\tilde{\x} - \x}{\sigma^2}
+    \right\|^2_2\right),
+\end{equation}
+and then aggregate them across all noise levels
+
+\begin{equation}
+    \cL_{\text{NCSN}}(\theta, \{\sigma_i\}_{i=1}^L) = \frac1L \sum_{i=1}^{L} \lambda(\sigma_i) l(\theta;\sigma_i),
+\end{equation}
+where $\lambda(\sigma) = \sigma^2$  ensures that $ \lambda(\sigma) l(\theta;\sigma)$ does not depend on $\sigma$.
+
+To train the noise-conditional score network (NCSN) based on the above loss, it is not necessary to construct and store $L$ separate datasets explicitly. Instead, at each training iteration one samples a datapoint $\x\sim p_{\mathrm{data}}$, then samples a noise level $\sigma_i$ uniformly from the sequence $\{\sigma_i\}_{i=1}^L$, to generate a perturbed sample through
+\[
+\tilde{\x} = \x + \sigma_i \z, \qquad \z \sim \cN(0,\I_D).
+\]
+The pair $(\tilde{\x},\sigma_i)$ is then used to evaluate the objective in eq.~\eqref{eq:DSM_loss_noise_level}, with the perturbed training examples generated during training to construct a Monte Carlo estimate of the loss, This way, there is no need to precompute and store noisy copies of the dataset.
+
+
+
+Lastly, after the NCSN is trained, \cite{song2021scorebased} proposes an \emph{annealed} variant of Langevin dynamics, inspired by simulated annealing. The procedure begins by drawing an initial sample from a Gaussian distribution, which coincides with the highest-noise perturbed density,
+\[
+\x^{(0)} \sim \mathcal N(0,\sigma_1^2 I_D).
+\]
+Starting from this initial point, Langevin dynamics is run for several iterations targeting the distribution \(q_{\sigma_1}\). The resulting sample is then used to initialise Langevin dynamics targeting the next distribution \(q_{\sigma_2}\), corresponding to a smaller noise level. This procedure is repeated sequentially along the noise schedule \(\sigma_1 > \sigma_2 > \cdots > \sigma_L\), each time using the last sample from the previous stage as the initial condition for the next one. The final stage targets \(q_{\sigma_L}\), which corresponds to the smallest noise level and provides an approximation of the data distribution. By gradually decreasing the noise level, the sampler goes from a coarse exploration of the ambient space toward a reliable approximation of the data distribution.
+
+
+\begin{algorithm}[H]
+\caption{Training a noise-conditional score network (NCSN)}
+\label{alg:ncsn_training}
+\begin{algorithmic}[1]
+\Require Dataset \(\mathcal D=\{\x^{(n)}\}_{n=1}^N\), noise levels \(\{\sigma_i\}_{i=1}^L\), weights \(\lambda(\sigma_i)\), learning rate \(\eta\)
+\Ensure Trained parameters \(\theta\)
+
+\State Initialise network parameters \(\theta\)
+\While{not converged}
+    \State Sample a minibatch \(\{\x_b\}_{b=1}^B\) from \(\mathcal D\)
+    \For{$b=1,\ldots,B$}
+        \State Sample \(i_b \sim \mathrm{Unif}\{1,\ldots,L\}\)
+        \State Draw \(\z_b \sim \mathcal N(0,I_D)\)
+        \State Set \(\tilde{\x}_b = \x_b + \sigma_{i_b}\z_b\)
+        \State Set \(\t_b = -(\tilde{\x}_b-\x_b)/\sigma_{i_b}^2\)
+    \EndFor
+    \State Compute
+    \[
+    \widehat{\mathcal L}(\theta)
+    =
+    \frac{1}{2B}
+    \sum_{b=1}^B
+    \lambda(\sigma_{i_b})
+    \left\|
+    s_\theta(\tilde{\x}_b,\sigma_{i_b})-\t_b
+    \right\|_2^2
+    \]
+    \State Update \(\theta \leftarrow \theta - \eta \nabla_\theta \widehat{\mathcal L}(\theta)\)
+\EndWhile
+\State \Return \(\theta\)
+
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Annealed Langevin dynamics sampling with a trained NCSN}
+\label{alg:ald_sampling}
+\begin{algorithmic}[1]
+\Require Trained score network \(s_\theta(\x,\sigma)\), noise levels \(\sigma_1>\sigma_2>\cdots>\sigma_L\), step sizes \(\{\alpha_i\}_{i=1}^L\), numbers of steps \(\{T_i\}_{i=1}^L\)
+\Ensure Approximate sample \(\x\) from the data distribution
+
+\State Draw initial sample \(\x \sim \mathcal N(0,\sigma_1^2 I_D)\)
+\For{$i=1,\ldots,L$}
+    \For{$t=1,\ldots,T_i$}
+        \State Draw \(\z \sim \mathcal N(0,I_D)\)
+        \State Update
+        \[
+        \x \leftarrow \x + \frac{\alpha_i}{2}s_\theta(\x,\sigma_i) + \sqrt{\alpha_i}\,\z
+        \]
+    \EndFor
+\EndFor
+\State \Return \(\x\)
+
+\end{algorithmic}
+\end{algorithm}

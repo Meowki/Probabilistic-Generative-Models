@@ -1,6 +1,6 @@
 \chapter{Flow-based models}
 
-\textbf{NB:} This is based on \cite{papamakarios2021normalizing}, \cite{lipman2023flowmatching}, \cite{grathwohl2019ffjord},  \cite{tong2023improving},  \cite{chen2018neuralode}, and \cite{liu2022rectified}.
+\textbf{NB:} This is based on \cite{papamakarios2021normalizing}, \cite{lipman2023flowmatching}, \cite{lipman2024flowmatchingtutorial}, \cite{grathwohl2019ffjord},  \cite{tong2023improving},  \cite{chen2018neuralode}, and \cite{liu2022rectified}.
 
 
 \paragraph{Motivation.}
@@ -19,7 +19,7 @@ Formally, the induced model will be the pushforward measure of $p_\u$ through $T
 \end{equation}
 
 
-This is somehow an extension of the setting we adopted in the variational autoencoder formulation, where the base distribution was assumed to be Gaussian, the transformation $T(\cdot)$ a neural network, and the learning paradigm was variational inference. The extensions to be considered in this chapter will take two directions. First, by imposing continuity and invertibility conditions of the map, the resulting model can be trained via maximum likelihood, provided the inverse of the map can be computed. Second, we will consider an approach where the map is broken down in stages, initially considering a compositional construction of the map and then an a continuous version; we will see that this perspective calls for an entirely new learning strategy. 
+This is somehow an extension of the setting we adopted in the variational autoencoder formulation, where the base distribution was assumed to be Gaussian, the transformation $T(\cdot)$ a neural network, and the learning paradigm was variational inference. The extensions to be considered in this chapter will take two directions. First, by imposing continuity and invertibility conditions of the map, the resulting model can be trained via maximum likelihood, provided the inverse of the map can be computed. Second, we will consider an approach where the map is broken down in stages, initially considering a compositional construction of the map and then a continuous version; we will see that this perspective calls for an entirely new learning strategy. 
 
 
 \section{Normalising flows}
@@ -30,7 +30,7 @@ We will now focus on a case characterised by a clear (and arguably restrictive) 
 Let $T:\mathbb{R}^D \to \mathbb{R}^D$ be a map. We say that $T$ is a \emph{diffeomorphism} if it is bijective, continuously differentiable, and its inverse $T^{-1}$ is also continuously differentiable. Equivalently, $T$ is a $\cC^1$ bijection with a $\cC^1$ inverse. In particular, the Jacobian matrix $\nabla T(\u)$ exists everywhere and is non-singular, i.e.\ $\det \nabla T(\u) \neq 0$ for all $\u \in \mathbb{R}^D$.
 \end{definition}
 
-The comment about $T$ being a bijective map with a well defined Jacobian is crucial in this setting, as that enables to  us to express the induced density over $\x = T(\u)$ via the change-of-variables theorem in terms of the base measure $p_\u$ as follows 
+The comment about $T$ being a bijective map with a well defined Jacobian is crucial in this setting, as that enables us to express the induced density over $\x = T(\u)$ via the change-of-variables theorem in terms of the base measure $p_\u$ as follows 
 \begin{equation}
 \label{eq:CoV_invT}    
 p(\x)
@@ -68,7 +68,7 @@ Under the proposed methodology, generating samples from $\x\sim p(\x)$ is direct
 \end{remark}
 
 \begin{remark}[Normalising flow]
-Since in either case both the direct map $T:\u\to\x$ when the aim is sampling, or the reverse one $T^{-1}:\x\to\u$ when the aim is learning. Since the case is usually the latter, the inverse map is usually the parametrised via $\phi=T^{-1}$, and the base measure is considered to be Gaussian. Therefore, the role of $\phi$ is to convert an arbitrary data distribution $p(\x)$ into a Normal variable, hence the name for $\phi$ as normalising flow.
+Note that either the direct map $T:\u\to\x$ (when the aim is sampling) or the reverse one $T^{-1}:\x\to\u$ (when the aim is learning) need to be available. Since the case is usually the latter, the inverse map is usually parametrised via $\phi=T^{-1}$, and the base measure is considered to be Gaussian. Therefore, the role of $\phi$ is to convert an arbitrary data distribution $p(\x)$ into a Normal variable, hence the name for $\phi$ as normalising flow.
 \end{remark}
 
 
@@ -82,7 +82,8 @@ At this stage, it is natural to ask how expressive the normalising flow construc
 \end{equation}
 where $F_\x$ and $F_\u$ are the cumulative distribution functions of $\x$ and $\u$ respectively. Intuitively, this flow is pushing the mass from $p_\u$ to a uniform distribution using $F_\u(\cdot)$, and then pushing it from there to $p$ via $F^{-1}_\x(\cdot)$. 
 
-Regarding the non-scalar case, provided that $p_\u$ is absolutely continuous wrt the Lebesgue measure a map fulfilling eq.~\eqref{eq:push_forward_density} is guaranteed to exist based on Brenier Theorem (see the OT chapter). this result states that the OT between two a.c. measures under the Euclidean ground cost always exist, is unique, and (critical in the normalising flow setting) is the gradient of a convex potential (which ensures invertibility). 
+
+Regarding the non-scalar case, if the base measure \(p_\u\) is absolutely continuous with respect to the Lebesgue measure, then there exists a map satisfying eq.~\eqref{eq:push_forward_density}. One important existence result is provided by Brenier's theorem (see the OT chapter). In particular, when both measures are absolutely continuous and the transport cost is quadratic, the optimal transport map exists, is unique under suitable conditions, and is given by the gradient of a convex potential. This provides a particularly relevant class of transport maps in the context of normalising flows.
 
 In addition to Brenier's theoretical guarantees, further insight into the expressivity of normalising flows can be gained by trying to adapt the monotone arrangement concept to the vector-valued case. Let us first observe that the monotone arrangement cannot be applied to vectors because, although the multivariate CDF is well defined and given by 
 \begin{equation}
@@ -187,10 +188,13 @@ evaluation tractable.
 
 \section{Continuous-time flows}
 
-We now consider a continuous version of the flow, where rather than a collection of sequential transformations as in the compositional construction, we will implement flows that model the (infinitesimal) evolution of the variables. To this end, let us consider a stochastic process $z_t$ indexed by the temporal variable $t\in[0,1]$, such that 
-\[\z_0 = \u,
+We now consider a continuous version of the flow, where rather than a collection of sequential transformations as in the compositional construction, we will implement flows that model the (infinitesimal) evolution of the variables. To this end, consider a time-indexed random variable $\z_t$, with
+$t\in[0,1]$, obtained by evolving the initial random variable
+$\u \sim p_\u$ through a deterministic flow. In particular,
+\[
+\z_0 = \u,
 \qquad
-z_1 = \x.
+\z_1 = \x .
 \]
 
 Unlike discrete flows, where the transformation is applied from one variable to the next, we now model the temporal evolution of $\z_t$, that is, 
@@ -340,7 +344,7 @@ according to the ODE
 \qquad
 \phi_0(\x)=\x.
 \]
-For a particle $\x\sim p_0(\x) = p(\x)$, the trajectory $t \mapsto \phi_t(\x)$ describes the evolution the particle under the velocity field $\v_t$, where the density of $\x$ evolves along the prescribed probability path
+For a particle $\x\sim p_0(\x) = p(\x)$, the trajectory $t \mapsto \phi_t(\x)$ describes the evolution of the particle under the velocity field $\v_t$, where the density of $\x$ evolves along the prescribed probability path
 $\{p_t\}_{t\in[0,1]}$. 
 As before, we say that the velocity field $\v_t$ \emph{generates} the probability path $p_t$ iff the pair $(p_t,\v_t)$ satisfies the continuity equation in eq.~\eqref{eq:continuity}.
 
@@ -375,7 +379,7 @@ Conditional to the terminal sample, the evolution of the distribution above desc
 The initial and terminal conditions for this marginal probability path are 
 \begin{align}
     t=0 : p_0(\x) &=  \int p(\x) q(\x_1)\d\x_1 = p(\x)\\
-    t=1 : p_1(\x) &=  \int p_t(\x \mid \x_1) q(\x_1)\d\x_1 =  \cN(\x \mid \x_1,\sigma^2\I) \ast q(\x),
+    t=1 : p_1(\x) &=  \int p_1(\x \mid \x_1) q(\x_1)\d\x_1 =  \cN(\x \mid \x_1,\sigma^2\I) \ast q(\x),
 \end{align}
 meaning that if $\sigma \ll 1$, then $p_1(\x)\approx q(\x)$.
 
@@ -383,7 +387,7 @@ We now need to identify a corresponding vector field that produces the above pro
 
 \begin{theorem}[From conditional to marginal vector field]
     \label{thm:lipman_VF}
-    The marginal vector field defined by 
+    If $\v_t(\x \mid \x_1) $ is a conditional velocity field that generates the conditional probability path $p_t(\x \mid \x_1)$, the marginal vector field defined by 
     \begin{equation}
         \label{eq:marginal_vactor_field}
         \v_t(\x) = \int \v_t(\x \mid \x_1) 
@@ -428,7 +432,7 @@ $ p_t(\x)$ and $\v_t(\x)$ also satisfies the continuity equation.
     &&\text{(eq.~\eqref{eq:marginal_vactor_field})} .
 \end{align*}
 
-Therefore, $p_t(\x)$ and $\v_t(\x)$ satisfy the continuity equation, which implies that $\v_t(\x)$ generates the marginal probability path. The interchange of derivatives and integrals above is justified under standard regularity assumptions (e.g., smooth vector fields and integrable densities).
+Therefore, $p_t(\x)$ and $\v_t(\x)$ satisfy the continuity equation, which implies that $\v_t(\x)$ generates the marginal probability path. The interchange of derivatives and integrals above is justified under standard regularity assumptions (e.g., smooth vector fields and integrable densities, DCT).
 \end{proof}
 
 \paragraph{Conditional flow matching.} Although Theorem \ref{thm:lipman_VF} provides a meaningful construction for the marginal vector field, this is again intractable as it depends on the data distribution $q(\cdot)$. However, we return to the flow-matching loss introduced in eq.~\eqref{eq:FM_loss}  and extend it to learn the conditional vector field. This yields an alternative loss termed conditional flow matching defined by 
@@ -462,13 +466,13 @@ The result linking this loss to the (marginal) FM loss is presented as follows
 \end{equation}
 with $\mu_t$ and $\sigma_t$ time-dependent functions with the following boundary conditions
 \begin{align}
-    t=0 &:  \mu_0=0,\,\sigma_t= 1\, \Rightarrow p_0(\x) = \cN(\x \mid 0,\I)\\
-    t=1 &: \mu_0=\x_1,\,\sigma_t= \sigma_\text{min}\, \Rightarrow p_(\x) = \cN(\x \mid \x_1,\sigma^2_\text{min}\I).
+    t=0 &:  \mu_0=0,\,\sigma_0= 1\, \Rightarrow p_0(\x) = \cN(\x \mid 0,\I)\\
+    t=1 &: \mu_1=\x_1,\,\sigma_1= \sigma_\text{min}\, \Rightarrow p_1(\x) = \cN(\x \mid \x_1,\sigma^2_\text{min}\I),
 \end{align}
-ensuring that the conditional probability path goes from a standard normal on $\R^D$ to a Gaussian concentrated on $\x_1$. Among several alternatives, we choose a flow that generates that probability path in eq.~\eqref{eq:conditional_Gaussian_PP} given by 
+thus ensuring that the conditional probability path goes from a standard normal on $\R^D$ to a Gaussian concentrated on $\x_1$. Among several alternatives, we choose a flow that generates that probability path in eq.~\eqref{eq:conditional_Gaussian_PP} given by 
 \begin{equation}
     \label{eq:conditional_Gaussian_flow}
-    \phi(\x) = \mu_t(\x_1) + \sigma_t(\x_1)\x; \quad \x\sim\cN(0,\I).
+    \phi_t(\x) = \mu_t(\x_1) + \sigma_t(\x_1)\x; \quad \x\sim\cN(0,\I).
 \end{equation}
 
 
@@ -565,13 +569,13 @@ Ideally, one would prefer the marginal flow itself to follow an OT geodesic, as 
 
 In addition to the datapoint $\x_1\sim q(\x)$, let us also consider a sample from the source distribution $\x_0\sim p(\x)$. As proposed by \cite{liu2022rectified}, choosing  $\z=(\x_0,\x_1)$ allows one to define the following conditional probability path: 
 \begin{equation}
-    p_t( \x \mid \z) = \cN(\x \mid t\x_1 + (1-t)\x_0,\sigma^2). 
+    p_t( \x \mid \z) = \cN(\x \mid t\x_1 + (1-t)\x_0,\sigma^2\I_D). 
 \end{equation}
 with the associated velocity field
 \begin{equation}
     \v_t( \x \mid \z) = \x_1 - \x_0.
 \end{equation}
-Here, assuming $\sigma<<1$, the conditional probability path evolves from a Gaussian concentrated on a sample from the source distribution $\x_0$ to a data sample $\x_1$. 
+Here, assuming $\sigma<<1$, the conditional probability path evolves from a Gaussian concentrated on a source sample $\x_0$ to a Gaussian concentrated on a target sample $\x_1$. 
 
 \begin{remark}
     Though the velocity field is simple and easy to implement, pairing arbitrary
@@ -579,7 +583,7 @@ Here, assuming $\sigma<<1$, the conditional probability path evolves from a Gaus
     trajectories that cross or move mass unnecessarily long distances. This
     arises because the construction implicitly assumes an independent coupling
     $q(\z)=q(\x_0)q(\x_1)$ between source and target samples, ignoring the
-    geometry of the two distributions. Instead, one can choose
+    geometry of the two distributions. An alternative is to choose
     $q(\z)=\pi(\x_0,\x_1)$ to be the OT coupling between the
     (empirical) source and target distributions, yielding straighter trajectories
     and more efficient transport of probability mass.
@@ -625,3 +629,451 @@ distribution toward the two--moons target distribution.
 
 
 \end{example}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%EXERCISES%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\clearpage
+\newpage
+\section*{Exercises - Flow-based methods}
+
+
+
+\begin{exercise}[Change of variables for an affine flow]
+Let \(T(\u)=A\u+b\) on \(\mathbb{R}^D\), where \(A\in\mathbb{R}^{D\times D}\) is invertible and \(b\in\mathbb{R}^D\). Assume \(\u\sim p_\u\).
+
+\begin{enumerate}
+\item Show that the density of \(\x=T(\u)\) is
+\[
+p(\x)=p_\u\!\left(A^{-1}(\x-b)\right)\,|\det A|^{-1}.
+\]
+\item Consider \(p_\u=\mathcal N(0,I)\) and identify the distribution of \(\x\).
+\item Write the log-likelihood \(\log p(\x)\) explicitly in terms of \(A\), \(b\), and \(\x\).
+\end{enumerate}
+\end{exercise}
+
+\begin{solution}[Change of variables for an affine flow]
+
+\textbf{1. Density of $\x = T(\u) = A\u + b$.}
+
+Since $A$ is invertible, the transformation $T$ is bijective. The inverse map is
+\[
+\u = T^{-1}(\x) = A^{-1}(\x - b),
+\]
+with Jacobian
+\(
+\frac{\partial \u}{\partial \x} = A^{-1}.
+\)
+Using the change-of-variables formula and using $|\det(A^{-1})| = |\det A|^{-1}$ gives 
+\[
+p(\x) = p_\u\!\left(A^{-1}(\x-b)\right)\,|\det A|^{-1}.
+\]
+
+\bigskip
+
+\textbf{2. Distribution when $\u \sim \mathcal N(0,I)$.}
+
+If $\u \sim \mathcal N(0,I)$ and $\x = A\u + b$, then an affine transformation of a Gaussian random vector remains Gaussian. The mean and covariance are
+
+\[
+\mathbb{E}[\x] = A\mathbb{E}[\u] + b = b,
+\qquad
+\mathrm{Cov}(\x) = A\,\mathrm{Cov}(\u)\,A^\top = AA^\top.
+\]
+
+Therefore
+\[
+\x \sim \mathcal N(b,\, AA^\top).
+\]
+
+\bigskip
+
+\textbf{3. Explicit log-likelihood.}
+
+The density of $\u \sim \mathcal N(0,I)$ is
+\[
+p_\u(\u) = (2\pi)^{-D/2}\exp\!\left(-\frac12 \u^\top\u\right).
+\]
+
+Substituting $\u = A^{-1}(\x-b)$ into the change-of-variables expression and taking the logarithm gives
+\[
+\log p(\x)
+=
+-\frac{D}{2}\log(2\pi)
+-\frac12 (A^{-1}(\x-b))^\top (A^{-1}(\x-b))
+-\log |\det A|.
+\]
+
+Equivalently, since $(A^{-1}(\x-b))^\top (A^{-1}(\x-b)) = (\x-b)^\top (AA^\top)^{-1}(\x-b)$,
+\[
+\log p(\x)
+=
+-\frac{D}{2}\log(2\pi)
+-\frac12 (\x-b)^\top (AA^\top)^{-1}(\x-b)
+-\frac12 \log \det(AA^\top).
+\]
+
+\end{solution}
+
+\begin{exercise}[A scalar normalising flow via CDF matching]
+Let \(u\sim \mathrm{Unif}([0,1])\), and define
+\[
+x=T(u)=F^{-1}(u),
+\]
+where \(F\) is the CDF of a strictly positive density \(p\) on \(\mathbb{R}\).
+
+\begin{enumerate}
+\item Show that \(T_\# p_u = p\), where \(p_u\) denotes the uniform density on \([0,1]\).
+\item Derive \(T'(u)\) in terms of \(p\bigl(T(u)\bigr)\).
+\item Recover the density \(p(x)\) from the change-of-variables formula.
+\item Apply the construction when \(p\) is the exponential density \(p(x)=\lambda e^{-\lambda x}\mathbf{1}_{x\ge 0}\), and compute \(T(u)\).
+\end{enumerate}
+\end{exercise}
+
+\begin{solution}[A scalar normalising flow via CDF matching]
+
+\textbf{1.} Let $x=T(u)=F^{-1}(u)$ with $u\sim \mathrm{Unif}([0,1])$. Then
+\[
+\mathbb{P}(x\le t)
+= \mathbb{P}(F^{-1}(u)\le t)
+= \mathbb{P}(u\le F(t))
+= F(t).
+\]
+Thus the CDF of $x$ is $F$, so $x$ has density $p$. Hence $T_\# p_u = p$.
+
+\medskip
+
+\textbf{2.} Since $F(T(u))=u$, differentiate:
+\[
+F'(T(u))\,T'(u)=1.
+\]
+Because $F'(x)=p(x)$,
+\[
+T'(u)=\frac{1}{p(T(u))}.
+\]
+
+\medskip
+
+\textbf{3.} By change of variables,
+\[
+p(x)=p_u(T^{-1}(x))\left|\frac{d}{dx}T^{-1}(x)\right|.
+\]
+Here $T^{-1}(x)=F(x)$, $p_u=1$ on $[0,1]$, and
+\[
+\frac{d}{dx}T^{-1}(x)=F'(x)=p(x),
+\]
+which recovers the density $p(x)$.
+
+\medskip
+
+\textbf{4.} For $p(x)=\lambda e^{-\lambda x}\mathbf{1}_{x\ge0}$,
+\[
+F(x)=1-e^{-\lambda x}.
+\]
+Solving $u=F(x)$,
+\[
+x=T(u)=-\frac{1}{\lambda}\log(1-u), \qquad u\in(0,1).
+\]
+
+\end{solution}
+
+
+\begin{exercise}[A simple coupling layer]
+Split \(\u=(u_1,u_2)\in\mathbb{R}^{d_1}\times\mathbb{R}^{d_2}\), and define the map
+\[
+T(u_1,u_2)=\bigl(x_1,x_2\bigr),\qquad
+x_1=u_1,\qquad
+x_2=u_2\odot \exp(s(u_1))+t(u_1),
+\]
+where \(s:\mathbb{R}^{d_1}\to\mathbb{R}^{d_2}\), \(t:\mathbb{R}^{d_1}\to\mathbb{R}^{d_2}\) differentiable, and \(\odot\) denotes componentwise multiplication.
+
+\begin{enumerate}
+\item Show that \(T\) is invertible, and compute \(T^{-1}\).
+\item Compute the Jacobian matrix of \(T\).
+\item Show that
+\[
+\log |\det \nabla T(u_1,u_2)| = \sum_{j=1}^{d_2} s_j(u_1).
+\]
+\item Explain why this type of layer is attractive for likelihood-based training.
+\end{enumerate}
+\end{exercise}
+
+\begin{solution}[A simple coupling layer]
+
+\textbf{1. Inverse.}
+Since
+\[
+x_1=u_1,\qquad x_2=u_2\odot e^{s(u_1)}+t(u_1),
+\]
+we immediately get
+\[
+u_1=x_1.
+\]
+Then
+\[
+u_2=(x_2-t(x_1))\odot e^{-s(x_1)}.
+\]
+Hence
+\[
+T^{-1}(x_1,x_2)
+=
+\bigl(x_1,\,(x_2-t(x_1))\odot e^{-s(x_1)}\bigr),
+\]
+so $T$ is invertible.
+
+\medskip
+
+\textbf{2. Jacobian.}
+The Jacobian has block form
+\[
+\nabla T(u_1,u_2)
+=
+\begin{pmatrix}
+I_{d_1} & 0\\[1mm]
+* & \mathrm{Diag}(e^{s(u_1)})
+\end{pmatrix},
+\]
+where the lower-left block $*$ is some $d_2\times d_1$ matrix coming from differentiating $x_2$ with respect to $u_1$---closed form given the derivatives of the functions $s(\cdot)$ and $t(\cdot)$.
+
+\medskip
+
+\textbf{3. Log-determinant.}
+Since the Jacobian is block triangular,
+\[
+\det \nabla T(u_1,u_2)
+=
+\det(I_{d_1})\det(\mathrm{Diag}(e^{s(u_1)}))
+=
+\prod_{j=1}^{d_2} e^{s_j(u_1)}.
+\]
+Therefore
+\[
+\log |\det \nabla T(u_1,u_2)|
+=
+\sum_{j=1}^{d_2} s_j(u_1).
+\]
+
+\medskip
+
+\textbf{4. Why useful for likelihood training.}
+\begin{itemize}
+    \item easily invertible, so sampling and density evaluation are both straightforward, and
+    \item its Jacobian determinant is cheap to compute, since it reduces to a sum rather than a full determinant. Thus exact log-likelihood training is efficient.
+\end{itemize}
+
+\end{solution}
+
+\begin{exercise}[Composition of flows]
+Let \(T=T_K\circ\cdots\circ T_1\) be a composition of diffeomorphisms on \(\mathbb{R}^D\), and define the intermediate variables
+\[
+\z_0=\u,\qquad \z_k=T_k(\z_{k-1}),\quad k=1,\dots,K,\qquad \z_K=\x.
+\]
+
+\begin{enumerate}
+\item Using the chain rule, show that
+\[
+\det \nabla T(\u)=\prod_{k=1}^K \det \nabla T_k(\z_{k-1}).
+\]
+\item Deduce the identity
+\[
+\log p(\x)=\log p_\u(\u)-\sum_{k=1}^K \log \left|\det \nabla T_k(\z_{k-1})\right|.
+\]
+\item Write the corresponding expression using the inverse maps \(\phi_k=T_k^{-1}\).
+\item Briefly discuss why one may prefer composing many simple flows instead of learning a single complicated map.
+\end{enumerate}
+\end{exercise}
+
+\begin{solution}[Composition of flows]
+
+\textbf{1.} By the chain rule,
+\(
+\nabla T(\u)
+=
+\nabla T_K(\z_{K-1})\cdots \nabla T_1(\z_0).
+\)
+Taking determinants,
+\[
+\det \nabla T(\u)
+=
+\prod_{k=1}^K \det \nabla T_k(\z_{k-1}).
+\]
+
+\medskip
+
+\textbf{2.} Using part 1 in the change-of-variables formula gives
+\[
+p(\x)
+=
+p_\u(\u)\prod_{k=1}^K \left|\det \nabla T_k(\z_{k-1})\right|^{-1}.
+\]
+Taking logs,
+\[
+\log p(\x)
+=
+\log p_\u(\u)
+-
+\sum_{k=1}^K \log \left|\det \nabla T_k(\z_{k-1})\right|.
+\]
+
+\medskip
+
+\textbf{3.} Denoting $\phi_k=T_k^{-1}$, we have 
+\(
+\u=\phi_1\circ\cdots\circ\phi_K(\x),
+\)
+and thus
+\[
+\log p(\x)
+=
+\log p_\u\!\bigl(\phi_1\circ\cdots\circ\phi_K(\x)\bigr)
++
+\sum_{k=1}^K \log \left|\det \nabla \phi_k(\z_k)\right|,
+\]
+since
+\[
+\log |\det \nabla \phi_k(\z_k)|
+=
+-\log |\det \nabla T_k(\z_{k-1})|.
+\]
+
+\medskip
+
+\textbf{4.} Composing several (simpler) flows is preferable because each layer can be made invertible with a cheap Jacobian determinant, while the composition is still expressive. This simplifies optimisation, sampling, and exact likelihood evaluation since usually the inverse and derivatives of the simple flows are available in closed form and do not need to be numerically approximated (as it is the case or complex maps).
+
+\end{solution}
+
+\begin{exercise}[Gaussian paths in continuous-time flows]
+Let \(\z_0\sim \mathcal N(m_0,\Sigma_0)\), and consider the linear ODE
+\[
+\frac{d\z_t}{dt}=A\z_t+b,
+\]
+where \(A\in\mathbb{R}^{D\times D}\) and \(b\in\mathbb{R}^D\) are constant.
+
+\begin{enumerate}
+\item Show that \(\z_t\) can be written explicitly in terms of \(\z_0\), \(A\), and \(b\).
+\item Deduce that \(\z_t\) is Gaussian for every \(t\).
+\item Derive ODEs for the mean \(m_t=\mathbb E[\z_t]\) and covariance \(\Sigma_t=\mathrm{Cov}(\z_t)\).
+\item Solve these ODEs in the case \(A=0\).
+\end{enumerate}
+\end{exercise}
+
+\begin{exercise}[Deriving the continuity equation in one dimension]
+Let \(z_t\in\mathbb{R}\) solve
+\[
+\frac{dz_t}{dt}=g(t,z_t),
+\]
+and let \(p_t(z)\) denote the density of \(z_t\).
+
+\begin{enumerate}
+\item Starting from conservation of mass on an interval \([a,b]\), show that \(p_t\) satisfies
+\[
+\partial_t p_t(z)+\partial_z\bigl(p_t(z)\,g(t,z)\bigr)=0.
+\]
+\item Expand the derivative and rewrite the equation as
+\[
+\partial_t p_t(z)+g(t,z)\,\partial_z p_t(z)+p_t(z)\,\partial_z g(t,z)=0.
+\]
+\item Interpret the meaning of each term in the equation.
+\item Verify the equation for the constant velocity field \(g(t,z)=c\), and identify the resulting density \(p_t\) in terms of \(p_0\).
+\end{enumerate}
+\end{exercise}
+
+\begin{exercise}[Instantaneous change-of-variables formula]
+Assume \(\z_t\) follows the ODE
+\[
+\frac{d\z_t}{dt}=g_\phi(t,\z_t),
+\]
+and that the density \(p_t\) satisfies the continuity equation
+\[
+\partial_t p_t(\z)+\nabla_\z\cdot\bigl(p_t(\z)\,g_\phi(t,\z)\bigr)=0.
+\]
+
+\begin{enumerate}
+\item Use the product rule to expand the divergence term.
+\item By differentiating \(p_t(\z_t)\) along trajectories, show that
+\[
+\frac{d}{dt} p_t(\z_t)
+=
+-p_t(\z_t)\,\nabla_\z\cdot g_\phi(t,\z_t).
+\]
+\item Deduce that
+\[
+\frac{d}{dt}\log p_t(\z_t)
+=
+-\nabla_\z\cdot g_\phi(t,\z_t).
+\]
+\item Integrate this identity from \(t=0\) to \(t=1\) to obtain a formula for \(\log p_1(\z_1)\) in terms of \(\log p_0(\z_0)\) and the divergence of the vector field.
+\end{enumerate}
+\end{exercise}
+
+\begin{exercise}[Conditional flow matching with a Gaussian path]
+Fix \(\x_1\in\mathbb{R}^D\), and consider the conditional Gaussian path
+\[
+p_t(\x\mid \x_1)=\mathcal N\bigl(\x \mid \mu_t(\x_1),\sigma_t(\x_1)^2 I\bigr),
+\]
+with
+\[
+\phi_t(\x)=\mu_t(\x_1)+\sigma_t(\x_1)\x,
+\qquad \x\sim \mathcal N(0,I).
+\]
+
+\begin{enumerate}
+\item Show that \(\phi_t(\x)\sim p_t(\cdot\mid \x_1)\).
+\item Differentiate \(\phi_t(\x)\) with respect to \(t\), and express the result in terms of \(\x\), \(\mu_t'(\x_1)\), and \(\sigma_t'(\x_1)\).
+\item Eliminate \(\x\) using
+\[
+\x=\frac{\phi_t(\x)-\mu_t(\x_1)}{\sigma_t(\x_1)},
+\]
+and derive the conditional velocity field
+\[
+v_t(\x\mid \x_1)
+=
+\mu_t'(\x_1)
++
+\frac{\sigma_t'(\x_1)}{\sigma_t(\x_1)}
+\bigl(\x-\mu_t(\x_1)\bigr).
+\]
+\item Specialise the result to
+\[
+\mu_t(\x_1)=t\x_1,
+\qquad
+\sigma_t(\x_1)=1-t(1-\sigma_{\min}),
+\]
+and simplify \(v_t(\x\mid \x_1)\).
+\end{enumerate}
+\end{exercise}
+
+\begin{exercise}[Rectified flow and transport efficiency]
+Consider the conditional path
+\[
+p_t(\x\mid \x_0,\x_1)=\mathcal N\bigl(\x \mid (1-t)\x_0+t\x_1,\sigma^2 I\bigr),
+\]
+where \(\x_0\sim p(\x)\) and \(\x_1\sim q(\x)\), and \(\sigma>0\) is small.
+
+\begin{enumerate}
+\item Show that the associated conditional velocity field is
+\[
+v_t(\x\mid \x_0,\x_1)=\x_1-\x_0.
+\]
+\item Explain why this vector field does not depend on either \(t\) or \(\x\).
+\item In the limit \(\sigma\to 0\), describe the resulting trajectories.
+\item Consider the one-dimensional case where
+\[
+p=\tfrac12\delta_{-1}+\tfrac12\delta_{1},
+\qquad
+q=\tfrac12\delta_{-2}+\tfrac12\delta_{2}.
+\]
+Compare the trajectories obtained from:
+\begin{enumerate}
+\item the independent coupling \(q(\x_0,\x_1)=p(\x_0)\,q(\x_1)\),
+\item the monotone/OT coupling pairing \(-1\mapsto -2\) and \(1\mapsto 2\).
+\end{enumerate}
+Which one gives more efficient transport, and why?
+\end{enumerate}
+\end{exercise}
