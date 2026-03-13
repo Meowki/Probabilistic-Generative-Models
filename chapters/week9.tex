@@ -122,7 +122,7 @@ Let $\{\sigma_i\}_{i=1}^L$ be a geometric sequence satisfying $\sigma_1 > \sigma
 \end{equation}
 Furthermore, the sequence $\{\sigma_i\}_{i=1}^L$ is chosen so that $\sigma_1$ is large enough to mitigate all the issues discussed above and $\sigma_L$ is small enough so that $q_{\sigma_L} (\x) \approx p_{\mathrm{data}}(\x)$.
 
-Since the score of the perturbation kernel is linear, for each noise level $\sigma$ we consider the following DSM target based on eq.~\eqref{eq:DSM_loss} given by 
+Since the score of the Gaussian perturbation kernel is linear, for each noise level $\sigma$ we consider the following DSM target based on eq.~\eqref{eq:DSM_loss} given by 
 \begin{equation}
     \label{eq:DSM_loss_noise_level}
     l(\theta;\sigma) = 
@@ -139,10 +139,10 @@ where $\lambda(\sigma) = \sigma^2$  ensures that $ \lambda(\sigma) l(\theta;\sig
 
 \begin{remark}[Preparing data for training]
     Training the noise-conditional score network (NCSN) based on the above loss, does not require to construct and store $L$ separate datasets explicitly. Instead, at each training iteration one samples a datapoint $\x\sim p_{\mathrm{data}}$, then samples a noise level $\sigma_i$ uniformly from the sequence $\{\sigma_i\}_{i=1}^L$, to generate a perturbed sample through
-\[
-\tilde{\x} = \x + \sigma_i \z, \qquad \z \sim \cN(0,\I_D).
-\]
-The pair $(\tilde{\x},\sigma_i)$ is then used to evaluate the objective in eq.~\eqref{eq:DSM_loss_noise_level}, with the perturbed training examples generated during training to construct a Monte Carlo estimate of the loss, This way, there is no need to precompute and store noisy copies of the dataset.
+    \[
+    \tilde{\x} = \x + \sigma_i \z, \qquad \z \sim \cN(0,\I_D).
+    \]
+    The pair $(\tilde{\x},\sigma_i)$ is then used to evaluate the objective in eq.~\eqref{eq:DSM_loss_noise_level}, with the perturbed training examples generated during training to construct a Monte Carlo estimate of the loss, This way, there is no need to precompute and store noisy copies of the dataset.
 \end{remark}
 
 
@@ -209,3 +209,247 @@ Starting from this initial point, Langevin dynamics is run for several iteration
 
 \end{algorithmic}
 \end{algorithm}
+
+
+
+\section{Denoising diffusion probabilistic models}
+
+
+
+Let us consider a variable of interest $\x_0\in\R^D$, such that $\x_0\sim q(\x_0)$, with $q(\cdot)$ its true unknown probability density. Starting from $\x_0$, we can construct a sequence of random variables $\x_1,\ldots,\x_T\in\R^D$, according to the following \emph{forward process} given by Gaussian perturbation kernels: 
+\begin{align}
+    q (\x_{1:T} \mid \x_0) &= \prod_{t=1}^T q(\x_t \mid \x_{t-1})
+    \label{eq:diff_q_factor}\\
+    q(\x_t \mid \x_{t-1}) &= \cN(\x_t; \sqrt{1-\beta_t}\x_{t-1},\beta\I), \label{eq:diff_q_def}
+\end{align}
+where the parameters $\{\beta_t\}_{t=1}^T$ are fixed and chosen so that, given $\x_0$, the sequence $\x_1,\ldots,\x_T$ becomes progressively distributed according to a standard Gaussian, that is, the terminal variable $\x_T$ is expected to be distributed close to $\cN(0,\I)$. 
+
+To see this, note that for an arbitrary $t\in\{1,\ldots,T\}$, the variable $\x_t$ can be directly sampled conditional to $\x_0$ according to 
+\begin{equation}
+    q(\x_t \mid \x_0) = \cN(\x_t; \sqrt{\bar\alpha_t}\x_0, (1-\bar\alpha_t)\I),   
+    \label{eq:noisy_sample_from_x0} 
+\end{equation}
+where $\alpha_t = 1-\beta_t$, and $\bar\alpha_t = \prod_{s=1}^{t}\alpha_s$. Therefore, for a sufficiently long sequence of steps with small $\beta_t$'s, we have $\bar\alpha_T\approx 0$ and $q(\x_t \mid \x_0) \approx \cN(0,\I)$.
+
+\begin{remark}[True model]
+    Observe that the model $q(\x_{0:T}) = q(\x_{1:T} \mid \x_0)q(\x_{0})$ is the true distribution of the process $\x_{0:T}$, and that, if a set of observations $\x_0$ were available, we could sample from the rest of the sequence $\x_{1:T}$. However, this formulation does not allow for sampling from the data distribution $q(\x_{0})$, which is unknown.  
+\end{remark}
+
+Given that our ultimate goal is to sample from the data distribution, we consider an approximating  parametric model for the sequence $\x_{0:T}$, given by $p_\theta(\x_{0:T})$. Since we know the distribution of the terminal variable $\x_T$ is approximately a standard Gaussian, we will choose $p_\theta(\x_T) = p(\x_T)= \cN(\x_T; 0, \I)$ and then define the rest of the approximating model as a \emph{reverse process} given by 
+\begin{align}
+    p_\theta (\x_{0:T}) &= p(\x_T) \prod_{t=1}^T p_\theta(\x_{t-1} | \x_t),\label{eq:diff_p_factor}\\
+    p_\theta(\x_{t-1} | \x_t) &= \cN(\x_{t-1}; \mu_\theta(\x_t,t), \Sigma_\theta(\x_t,t)).
+    \label{eq:diff_p_def}
+\end{align}
+
+Observe that $p_\theta(\x_{0:T})$ defines a latent-variable model, where the approximation to the data distribution is given by 
+\[
+p_\theta (\x_0) = \int p_\theta(\x_{0:T})\d\x_{1:T},
+\]
+and, as opposed to previous latent-variable model we have seen, both ambient and latent  variables here are of the same dimension, i.e.,  $\x_{0:T}\in\R^D$.
+
+\begin{remark}[Approximating model]
+    \label{rem:approximating_model}
+    Unlike $q(\x_0)$, sampling from $p_\theta(\x_0)$ using the reverse process in eqs.~\eqref{eq:diff_p_factor}-\eqref{eq:diff_p_def} is straightforward since the initial distribution $\x_T\sim p(\x_T) = \cN(0,\I)$ is Gaussian. Therefore, we will train $p_\theta(\x_{0:T})$ so that $p_\theta(\x_{0})$ matches $q(\x_{0})$
+\end{remark}
+
+
+\begin{remark}[Hierarchical VAE analogy]
+    Observe that the model introduced above has a \emph{deep} (or hierarchical) VAE structure. 
+    To see this, consider first the case $T=1$. The generative model becomes
+    \[
+        p_\theta(\x_0,\x_1) = p(\x_1)p_\theta(\x_0 \mid \x_1),
+    \]
+    where $p(\x_1)=\cN(0,\I)$ and $p_\theta(\x_0 \mid \x_1)$ is Gaussian with parameters
+    given by the networks $\mu_\theta$ and $\Sigma_\theta$. The variational distribution is given by the forward
+    diffusion kernel
+    \[
+        q(\x_1 \mid \x_0) = \cN(\x_1;\sqrt{1-\beta_1}\x_0,\beta_1\I),
+    \]
+    which plays the role of the encoder in a VAE. Notice, however, that in this case the encoder $q(\x_1|\x_0)$ is fixed rather than learned.
+
+    For general $T$, a hierarchical structure arises: the model can be interpreted as a sequence of VAEs where each layer progressively corrupts (or denoises) the representation produced by the previous one. See \cite{luo2022understanding} for an in-depth presentation of hierarchical VAEs and diffusion models. See a diagram in Fig.~\ref{fig:HVAE}. 
+\end{remark}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{img/week9_HVAE.JPG}
+  \caption{Diagram of the presented hierarchical VAE analogy. Taken from \protect\cite{luo2022understanding}}
+  \label{fig:HVAE}
+\end{figure}
+
+
+\begin{remark}[Model expressivity]
+The encoder distributions $q(\x_t|\x_{t-1})$ are fixed Gaussian kernels. In contrast to standard VAEs, this does not significantly limit the model expressivity, since the role of the forward process is simply to transform the data distribution into a Gaussian, and the construction above ensures that. The flexibility required to model the data distribution, therefore, stems from the reverse process $p_\theta(\x_{t-1}|\x_t)$, which must learn how to invert this \emph{Gaussianisation} recursively.
+\end{remark}
+
+\paragraph{Variational objective.}
+
+In Remark~\ref{rem:approximating_model}, it was stated that the model $p_\theta(\x_{0:T})$ should be trained so that its marginal $p_\theta(\x_0)$ approximates the data distribution $q(\x_0)$. For a fixed observed datapoint $\x_0$, the variables $\x_{1:T}$ are latent, and the forward diffusion process in eq.~\eqref{eq:diff_q_factor}
+provides a natural variational distribution. Therefore, applying
+Jensen's inequality yields the evidence lower bound (ELBO)
+\begin{align}
+\elbo(\x_0)
+&=
+\mathbb{E}_{q(\x_{1:T}\mid \x_0)}
+\left(
+\log \frac{p_\theta(\x_{0:T})}{q(\x_{1:T}\mid \x_0)}
+\right)
+\le \log p_\theta(\x_0).
+\end{align}
+
+Furthermore, incorporating the forward/backward factorisations in eqs.~\eqref{eq:diff_p_factor} and \eqref{eq:diff_q_factor}, we obtain
+\begin{align}
+    \elbo(\x_0)
+    &= \mathbb{E}_{q(\x_{1:T} \mid \x_0)} \left(\log p(\x_T) + \sum_{t=2}^{T}\log\frac{p_\theta (\x_{t-1} \mid \x_t)}{ q(\x_t \mid \x_{t-1})} + \log\frac{p_\theta (\x_{0} \mid \x_1)}{ q(\x_1 \mid \x_{0})} \right).\label{eq:ELBO_DDPM1}
+\end{align}
+
+
+\begin{remark}[ELBO computability vs.\ interpretability]
+Though the above expression is tractable in the sense that all the terms are Gaussian and the expectation can be estimated via Monte Carlo, it does not yet reveal how each transition kernel $p_\theta(\x_{t-1}\mid\x_t)$ should match the reverse dynamics of the forward process.
+
+Ideally, we would like to identify terms of the form
+\[
+\KL{q(\x_{t-1}\mid\x_t)}{p_\theta(\x_{t-1}\mid\x_t)},
+\]
+which would explicitly compare the learned reverse kernel with the true
+reverse conditional of the diffusion process. However, this conditional
+depends on the unknown data distribution through
+\begin{align*}
+q(\x_{t-1}\mid\x_t)
+&=
+\int q(\x_{t-1}\mid\x_t,\x_0)\,q(\x_0\mid\x_t)\,d\x_0.\\
+&= \int q(\x_{t-1}\mid\x_t,\x_0)\,q(\x_{t} \mid \x_0) \frac{q(\x_0)}{q(\x_{t})} \d\x_0.
+\end{align*}
+
+\end{remark}
+
+We can introduce a simple reformulation of the terms in eq.~\eqref{eq:ELBO_DDPM1} to make it more interpretable in the sense of the previous remark. By Bayes' rule, we have
+\[
+q(\x_{t-1}\mid \x_t,\x_0)
+=
+\frac{q(\x_t\mid \x_{t-1},\x_0)\,q(\x_{t-1}\mid \x_0)}{q(\x_t\mid \x_0)},
+\]
+however, since $\x_{1:T}$ is Markovian given $\x_0$ under $q(\cdot)$, we have $q(\x_t\mid \x_{t-1},\x_0)=q(\x_t\mid \x_{t-1})$, and thus
+\begin{equation}
+    q(\x_t\mid \x_{t-1})
+=
+\frac{q(\x_{t-1}\mid \x_t,\x_0)\,q(\x_t\mid \x_0)}{q(\x_{t-1}\mid \x_0)}.
+\label{eq:bayes_in_DDPM}
+\end{equation}
+
+\begin{remark}[Closed form of eq.~\eqref{eq:bayes_in_DDPM}]
+    Conditional on $\x_0$, the variational denoiser is Gaussian and given by 
+    \begin{align}
+q(\x_{t-1}\mid \x_t, \x_0)
+&=
+\mathcal{N}\bigl(\x_{t-1}; \tilde{\mu}_t(\x_t,\x_0), \tilde{\beta}_t I \bigr), \label{eq:conditional_denoiser} \\
+\tilde{\mu}_t(\x_t,\x_0)
+&:=
+\frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1-\bar{\alpha}_t}\x_0
++
+\frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}\x_t, \label{eq:conditional_denoiser_mean}\\
+\tilde{\beta}_t
+&:=
+\frac{1-\bar{\alpha}_{t-1}}{1-\bar{\alpha}_t}\beta_t. \label{eq:conditional_denoiser_var}
+\end{align}
+We will need this expression later. 
+\end{remark}
+
+Incorporating eq.~\eqref{eq:bayes_in_DDPM} into eq.~\eqref{eq:ELBO_DDPM1}, we have 
+\begin{align}
+    \elbo(\x_0)
+     &= \mathbb{E}_{q(\x_{1:T} \mid \x_0)} \left(\log p(\x_T) + \sum_{t=2}^{T}\log\frac{p_\theta (\x_{t-1} \mid \x_t)}{ q(\x_{t-1}\mid \x_t,\x_0)}\frac{q(\x_{t-1}\mid \x_0)}{q(\x_t\mid \x_0)} + \log\frac{p_\theta (\x_{0} \mid \x_1)}{ q(\x_1 \mid \x_{0})} \right)\nonumber\\
+     &= \mathbb{E}_{q(\x_{1:T} \mid \x_0)} \left(\log p(\x_T) 
+     + \sum_{t=2}^{T}\left(\log\frac{p_\theta (\x_{t-1} \mid \x_t)}{ q(\x_{t-1}\mid \x_t,\x_0)}
+     + \log\frac{q(\x_{t-1}\mid \x_0)}{q(\x_t\mid \x_0)} \right)
+     + \log\frac{p_\theta (\x_{0} \mid \x_1)}{ q(\x_1 \mid \x_{0})} \right)\nonumber\\
+     &= \mathbb{E}_{q(\x_{1:T} \mid \x_0)} \left(
+    \log\frac{p(\x_T)}{q(\x_T\mid \x_0)}  
+     + \sum_{t=2}^{T}\log\frac{p_\theta (\x_{t-1} \mid \x_t)}{ q(\x_{t-1}\mid \x_t,\x_0)}
+     + \log p_\theta (\x_{0} \mid \x_1) \label{eq:ELBO_DDPM2}
+     \right),
+\end{align}
+where in the last expression we used the fact that the terms $q(\x_t\mid \x_0)$ cancel each other due to the telescopic sum. 
+
+Recall that the objective in eq.~\eqref{eq:ELBO_DDPM2} corresponds to a single datapoint $\x_0$. To obtain the ELBO corresponding to the full data distribution we take the expectation with
+respect to $q(\x_0)$:
+\[
+\elbo = \mathbb{E}_{q(\x_0)}[\elbo(\x_0)].
+\]
+Identifying the joint distribution of the forward diffusion process
+\(
+q(\x_{0:T}) = q(\x_0)q(\x_{1:T}\mid \x_0),
+\)
+the objective becomes
+\begin{align}
+\elbo
+&=
+\mathbb{E}_{q(\x_{0:T})}
+\left(
+\log\frac{p(\x_T)}{q(\x_T\mid \x_0)}
++
+\sum_{t=2}^{T}\log\frac{p_\theta (\x_{t-1} \mid \x_t)}{ q(\x_{t-1}\mid \x_t,\x_0)}
++
+\log p_\theta (\x_{0} \mid \x_1)
+\right).
+\label{eq:ELBO_DDPM3}
+\end{align}
+
+Observe that the first two terms can be expressed as KL divergences by extracting the appropriate marginal  from the expectation. This is indeed possible since we can write 
+\[
+q(\x_{0:T})
+=
+q(\x_0)\,q(\x_t\mid \x_0)\,q(\x_{t-1}\mid \x_t,\x_0)\,
+q(\x_{1:t-2},\x_{t+1:T}\mid \x_{t-1},\x_t,\x_0).
+\]
+Therefore, we obtain
+\[
+\elbo = \mathbb{E}_{q(\x_{0:T})} \left[\sum_{t=0}^{T} L_t\right]
+\]
+where
+\begin{align*}
+L_T
+&=
+-
+\KL{q(\x_T\mid \x_0)}{p(\x_T)},\\[4pt]
+L_{t-1}
+&=
+-
+\KL{q(\x_{t-1}\mid \x_t,\x_0)}{p_\theta(\x_{t-1}\mid \x_t)},
+\qquad t=2,\dots,T,\\[4pt]
+L_0
+&=
+\log p_\theta(\x_0\mid \x_1).
+\end{align*}
+
+\begin{remark}[Interpretation of the terms in the ELBO]
+    The term $L_T$ matches the terminal forward distribution to the prior, the terms $L_{t-1}$ for $t=2,\dots,T$ match each learned reverse kernel to the corresponding reverse conditional of the forward process, and $L_0$ corresponds to a reconstruction likelihood of the data from the first latent variable $\x_1$.
+\end{remark}
+
+\paragraph{Design of the denoising autoencoder.} Based on the loss above, we now establish particular choices for the design of the reverse generative process $p_\theta$. 
+
+First, note that the $L_T$ term measures the discrepancy between $p(\x_T)$, which is chosen as a standard Gaussian, and $q(\x_T \mid \x_0)$ which is \emph{close to} a standard Gaussian based on the choice of the schedule $\{\beta_t\}_{t=1}^T$ which is fixed. Therefore, this term has no trainable parameters $\theta$ and thus will be ignored from the optimisation. 
+
+Second, the term $L_0$ measures the reconstruction of the data from the first latent variable and therefore plays the role of a \emph{link} function ensuring that the output of the reverse process matches the format of the data. In \cite{ho2020ddpm}, which focuses on image generation, data are assumed to take integer values in $\{0,\ldots,255\}$ linearly scaled to $[-1,1]$. Therefore, a discrete log-likelihood is obtained in the final step of the reverse process by implementing a discrete decoder derived from a Gaussian distribution, that is, by integrating this Gaussian over the quantization
+interval corresponding to each pixel value. As a consequence, and unlike the term $L_T$, this component does involve trainable parameters and therefore contributes to the optimisation.
+
+Third, for the $L_{t-1}$ terms, the backward Gaussian kernel in eq.~\eqref{eq:diff_p_def} can be chosen as 
+\[
+p_\theta(\x_{t-1} \mid \x_t) = \cN(\x_{t-1} ; \mu_\theta(\x_t,t), \sigma_t^2\I),
+\]
+with, e.g., $\sigma_t^2 = \beta_t$. With this choice, we have 
+\begin{equation}
+    L_{t-1} \propto_\theta \mathbb{E}_q(\x_{0:T})\left[ \frac{1}{2\sigma_t^2 }\| \tilde\mu_t(\x_t,\x_0) - \mu_\theta(\x_t,t) \|^2\right],
+\end{equation}
+where recall that the symbol $\propto_\theta$ denotes proportionality up to terms independent of $\theta$.
+
+
+ Observe the following: 
+ 
+ \begin{itemize}
+    \item The denoising model $\mu_\theta(\x_t,t)$ is trained to match the variational denoiser $\tilde\mu_t(\x_t,\x_0)$ in eq.~\eqref{eq:conditional_denoiser_mean}, meaning that $\mu_\theta(\x_t,t)$ should be designed with that objective in mind. 
+    \item Note that both terms depend on the noisy sample $\x_t$, which can be expressed according to eq.~\eqref{eq:noisy_sample_from_x0} as $\x_t = \sqrt{\bar\alpha_t}\x_0 + \epsilon\sqrt{1-\bar\alpha_t}$, for $\epsilon\sim\cN(0,\I)$.
+    \item As a consequence, the objective can be rewritten wrt a netwrok that predict the noise variable $\epsilon$
+ \end{itemize} 
+ \missing{clarify the steps above in more detail}
