@@ -441,15 +441,64 @@ p_\theta(\x_{t-1} \mid \x_t) = \cN(\x_{t-1} ; \mu_\theta(\x_t,t), \sigma_t^2\I),
 with, e.g., $\sigma_t^2 = \beta_t$. With this choice, we have 
 \begin{equation}
     L_{t-1} \propto_\theta \mathbb{E}_q(\x_{0:T})\left[ \frac{1}{2\sigma_t^2 }\| \tilde\mu_t(\x_t,\x_0) - \mu_\theta(\x_t,t) \|^2\right],
+    \label{eq:L_t-1_with_mus}
 \end{equation}
 where recall that the symbol $\propto_\theta$ denotes proportionality up to terms independent of $\theta$.
 
+\begin{remark}[Design of $\mu_\theta(\x_t,t)$]
+  The denoising model $\mu_\theta(\x_t,t)$ is trained to match the variational denoiser $\tilde\mu_t(\x_t,\x_0)$ in eq.~\eqref{eq:conditional_denoiser_mean}; this provides the necessary insight to design  $\mu_\theta(\x_t,t)$.   
+\end{remark}
+Recall that  $\tilde\mu_t(\x_t,\x_0)$ is known in close from in eq.~\eqref{eq:conditional_denoiser_mean}, and that $\x_t$ can be expressed according to eq.~\eqref{eq:noisy_sample_from_x0} as $\x_t = \sqrt{\bar\alpha_t}\x_0 + \epsilon\sqrt{1-\bar\alpha_t}$, for $\epsilon\sim\cN(0,\I)$. Therefore, we can write 
 
- Observe the following: 
- 
- \begin{itemize}
-    \item The denoising model $\mu_\theta(\x_t,t)$ is trained to match the variational denoiser $\tilde\mu_t(\x_t,\x_0)$ in eq.~\eqref{eq:conditional_denoiser_mean}, meaning that $\mu_\theta(\x_t,t)$ should be designed with that objective in mind. 
-    \item Note that both terms depend on the noisy sample $\x_t$, which can be expressed according to eq.~\eqref{eq:noisy_sample_from_x0} as $\x_t = \sqrt{\bar\alpha_t}\x_0 + \epsilon\sqrt{1-\bar\alpha_t}$, for $\epsilon\sim\cN(0,\I)$.
-    \item As a consequence, the objective can be rewritten wrt a netwrok that predict the noise variable $\epsilon$
- \end{itemize} 
- \missing{clarify the steps above in more detail}
+\begin{align}
+    \tilde{\mu}_t(\x_t,\x_0)
+    &=
+    \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1-\bar{\alpha}_t}\x_0
+    +
+    \frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}\x_t\nonumber\\
+    &= \frac1{\sqrt{\alpha_t}}\left(\x_t - \frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\epsilon\right),  \label{eq:new_mu_tilde}
+\end{align}
+where we have used the identities $\beta_t = 1-\alpha_t$ and $\bar\alpha_t = \prod_{s=1}^{t}\alpha_s$.
+
+
+
+Since $\mu_\theta(\x_t,t)$ estimates the above expression as a function of $\x_t$, we use the fact that the schedule $\beta_t$ is fixed to consider the following reparametrisation: 
+
+\begin{equation}
+    \label{eq:new_mu_theta}
+    \mu_\theta(\x_t,t) = \frac1{\sqrt{\alpha_t}}\left(\x_t - \frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\epsilon_\theta(\x_t,t)\right),
+\end{equation}
+where now $\epsilon_\theta:\R^D\times\R \to \R^D$ is a networks that estimates the noise $\epsilon$ using $\x_t$ and $t$.
+
+Lastly, updating eqs.~\eqref{eq:new_mu_theta} and \eqref{eq:new_mu_tilde} into eq.~\eqref{eq:L_t-1_with_mus}, and expressing again $\x_t$ as a function of the datapoint $\x_0$ so that the expectation is only take wrt $\x_0$ and $\epsilon$, we have the new simplified $L_{t-1}$ loss
+
+\begin{equation}
+    L_{t-1} \propto_\theta \mathbb{E}_{\x_0,\epsilon}\left[ \frac{\beta_t^2}{2\sigma_t^2\alpha_t (1-\bar\alpha_t) }\| \epsilon - \epsilon_\theta(\sqrt{\bar\alpha_t}\x_0 + \epsilon\sqrt{1-\bar\alpha_t},t) \|^2\right],
+    \label{eq:L_t-1_with_epsilons}
+\end{equation}
+
+\paragraph{Denoising diffusion implicit model (DDIM).} A variant of DDPM is DDIM \cite{song2021denoising}, which builds on the observation that DDPM's loss in eq.~\eqref{eq:L_t-1_with_epsilons} is not exclusive to the chosen forward $q(\x_{0:T})$, and thus one can construct a family of non-Markovian noising processes inducing the same training objective, but with different transition densities. Since DDPM samples according to 
+\[
+\x_{t-1} \sim p_\theta(\x_{t-1}\mid \x_t)
+= \cN\!\bigl(\x_{t-1};\mu_\theta(\x_t,t),\sigma_t^2 I\bigr),
+\]
+it injects Gaussian noise at each iteration. The role of the noise-prediction network $\epsilon_\theta(\x_t,t)$ is therefore not to directly produce the next sample, but rather to predict the noise component in $\x_t$, from which the mean of the reverse Gaussian transition is computed. Consequently, even with a perfect predictor $\epsilon_\theta$, the reverse step in DDPM remains stochastic due to the sampling from the Gaussian distribution.
+
+Conversely, DDIM recycles the trained noise predictor $\epsilon_\theta(\x_t,t)$ (as the training loss is the same) but defines a reverse update given by
+\[
+\x_{t-1}
+=
+\sqrt{\bar\alpha_{t-1}}\,\hat{\x}_0(\x_t,t)
++
+\sqrt{1-\bar\alpha_{t-1}}\,\epsilon_\theta(\x_t,t),
+\qquad
+\hat{\x}_0(\x_t,t)
+=
+\frac{1}{\sqrt{\bar\alpha_t}}
+\left(\x_t-\sqrt{1-\bar\alpha_t}\,\epsilon_\theta(\x_t,t)\right),
+\]
+which corresponds to the deterministic case of the more general DDIM family. Note that the above equation can also be motivated by replacing $\x_0$ (instead of $\x_t$) in eq.~\eqref{eq:new_mu_tilde}. 
+
+Therefore, unlike DDPM, DDIM does not implement a stochastic reverse diffusion during inference, but rather a deterministic procedure. In other words, while DDPM learns a sequence of reverse transition distributions and samples from them, DDIM uses the same trained denoiser to construct a deterministic trajectory from $\x_T$ to $\x_0$.
+
+Critically, the computational gain of DDIM does not come from avoiding the sampling of Gaussian noise, which is negligible compared to evaluating $\epsilon_\theta$. Instead, DDIM uses a subset of timesteps during inference, effectively jumping between noise levels, instead of DDPM which goes through the entire schedule $T,T-1,\dots,1$ (usually $T\approx1000$). Since each step requires evaluating $\epsilon_\theta$, reducing the number of timesteps accelerates sampling while still producing high-quality samples.
