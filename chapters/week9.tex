@@ -502,3 +502,88 @@ which corresponds to the deterministic case of the more general DDIM family. Not
 Therefore, unlike DDPM, DDIM does not implement a stochastic reverse diffusion during inference, but rather a deterministic procedure. In other words, while DDPM learns a sequence of reverse transition distributions and samples from them, DDIM uses the same trained denoiser to construct a deterministic trajectory from $\x_T$ to $\x_0$.
 
 Critically, the computational gain of DDIM does not come from avoiding the sampling of Gaussian noise, which is negligible compared to evaluating $\epsilon_\theta$. Instead, DDIM uses a subset of timesteps during inference, effectively jumping between noise levels, instead of DDPM which goes through the entire schedule $T,T-1,\dots,1$ (usually $T\approx1000$). Since each step requires evaluating $\epsilon_\theta$, reducing the number of timesteps accelerates sampling while still producing high-quality samples.
+
+\section{Equivalences among flow and diffusion models}
+
+In the last two chapters we covered flow-matching, score-based and diffusion models. These were motivated from the common perspective of transforming a source of Gaussian noise into the target data distribution, but were presented as different generative procedures; however, we will see now that they are closely related. Based on an inspection of their corresponding loss functions, we will identify their similarities and the understand how their differences arise from the way their dynamics are parametrised.
+
+\paragraph{Flow matching and score-based models.}
+
+FM learns a deterministic velocity field $\v_\theta(\x_t,t)$ that approximates the true velocity field $\v^\star_t(\x_t)$ of a probability path $\{p_t\}_{t\in[0,1]}$. The objective is
+\[
+\mathcal{L}_{\text{FM}}
+=
+\mathbb{E}_{t,\x_t}
+\left[
+\|\v_\theta(\x_t,t) - \v^\star_t(\x_t)\|^2
+\right].
+\]
+Then, the flow is given by the (learned) ODE
+\[
+\frac{d\x_t}{dt} = \v_\theta(\x_t,t),
+\]
+which transports samples from the source distribution to the data distribution.
+
+Score-based models (SBM) instead learn the score function of the intermediate noise-corrupted densities,
+\[
+s_\theta(\x_t,t) \approx \nabla_{\x_t}\log p_t(\x_t),
+\]
+using a denoising score matching objective of the form
+\[
+\mathcal{L}_{\text{SBM}}
+=
+\mathbb{E}_{t,\x_t}
+\left[
+\|s_\theta(\x_t,t) - \nabla_{\x_t}\log p_t(\x_t)\|^2
+\right].
+\]
+
+The connection between SBM and FM can be understood through the continuous-time formulation of score-based models introduced by \cite{song2021scorebased}. Here, the forward noising process is described by a stochastic differential equation
+\[
+d\x = f(\x,t)\,dt + g(t)\,d\w_t,
+\]
+where $f(\cdot)$ and $g(\cdot)$ are given by the noise perturbation schedule. 
+
+As shown by \cite{song2021scorebased}, there exists a deterministic probability flow ODE associated with this diffusion process that induces the same marginal distributions $\{p_t\}_{t\in[0,1]}$. The velocity field of this ODE is given by
+\[
+\v_t^\star(\x_t)
+=
+f(\x_t,t)
+-
+\frac{1}{2} g(t)^2 \nabla_{\x_t}\log p_t(\x_t).
+\]
+
+Therefore, once the score function $\nabla_{\x_t}\log p_t(\x_t)$ is trained, the velocity field can be reconstructed. This means that SBMs implicitly learn the same transport vector field that FM methods parameterise directly.
+
+\paragraph{Score-based models and DDPM.}
+
+Denoising diffusion probabilistic models introduce the discrete-time forward noising process
+\[
+\x_t = \sqrt{\bar{\alpha}_t}\,\x_0 + \sqrt{1-\bar{\alpha}_t}\,\varepsilon,
+\qquad \varepsilon \sim \mathcal{N}(0,I),
+\]
+and train a neural network to predict the noise $\varepsilon$ via
+\[
+\mathcal{L}_{\text{DDPM}}
+=
+\mathbb{E}_{t,\x_0,\varepsilon}
+\left[
+\|\varepsilon - \varepsilon_\theta(\x_t,t)\|^2
+\right].
+\]
+
+
+Note that, since  the score of the Gaussian conditional $p(\x_t|\x_0)$ satisfies
+\[
+\nabla_{\x_t}\log p(\x_t|\x_0)
+=
+-\frac{1}{1-\bar{\alpha}_t}
+(\x_t - \sqrt{\bar{\alpha}_t}\x_0),
+\]
+The SBM objective is equivalent to that of DDPM score matching up to a known scaling factor. Therefore, DDPM training can be interpreted as learning the time-dependent score $s_\theta(\x_t,t)$.
+
+\paragraph{Flow matching and DDPM.}
+
+Lastly, combining the previous equivalences implies that DDPM and FM also become equivalent.
+
+From the perspective of the loss functions, though the methods adopt different representations, they are equivalent. FM regresses the velocity field $v^\star(\x_t,t)$, SBM regresses the score $\nabla\log p_t(\x_t)$, and DDPM regresses the noise variable $\varepsilon$. However, these quantities are linearly related given the shared assumption of the diffusion process. This means that  the three objectives are different parameterisations of the same concept, which is to learn a vector field that transports a Gaussian distribution to the data distribution over time.
