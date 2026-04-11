@@ -175,9 +175,9 @@ See Fig.~\ref{fig:Kantorovich_diagram} for an illustration.
 \vspace{2cm}
 
 \begin{remark}[Equivalence between Monge and Kantorovich]
-Whenever the Monge problem admits a solution, the Kantorovich formulation is equivalent to it. More precisely, if there exists an optimal transport map \(T:\cX\to\cY\) pushing \(\mu\) onto \(\nu\), then the associated transport plan \(\pi_T \in \Pi(\mu,\nu)\), defined by
+Assume that $\mu$ is nonatomic. Whenever the Monge problem admits a solution, the Kantorovich formulation is equivalent to it. More precisely, if there exists an optimal transport map \(T:\cX\to\cY\) pushing \(\mu\) onto \(\nu\), then the associated transport plan
 \[
-\pi_T(x,y) = \mu(x)\,\mathbf{1}_{\{y=T(x)\}},
+\pi_T := (\mathrm{id},T)_\#\mu \in \Pi(\mu,\nu)
 \]
 is an optimal solution of the Kantorovich problem and both formulations attain the same optimal cost. In this case, the optimal Kantorovich plan is supported on the graph of the map \(T\).
 
