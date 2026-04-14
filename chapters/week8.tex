@@ -379,7 +379,7 @@ Conditional to the terminal sample, the evolution of the distribution above desc
 The initial and terminal conditions for this marginal probability path are 
 \begin{align}
     t=0 : p_0(\x) &=  \int p(\x) q(\x_1)\d\x_1 = p(\x)\\
-    t=1 : p_1(\x) &=  \int p_1(\x \mid \x_1) q(\x_1)\d\x_1 =  \cN(\x \mid \x_1,\sigma^2\I) \ast q(\x),
+    t=1 : p_1(\x) &=  \int p_1(\x \mid \x_1) q(\x_1)\d\x_1 =  (\cN(\cdot \mid \x_1,\sigma^2\I) \ast q(\cdot))(\x),
 \end{align}
 meaning that if $\sigma \ll 1$, then $p_1(\x)\approx q(\x)$.
 
